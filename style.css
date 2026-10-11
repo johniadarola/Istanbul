@@ -320,3 +320,11 @@ body.has-movebar .wrap{padding-bottom:96px}
   .loccard .pd{font-size:14px}
 }
 @media (min-width:900px){.loccard .lc-art{aspect-ratio:16/10}}
+/* rules text as an inset parchment box, so the art shows in full */
+.loccard .lc-frame{background:linear-gradient(to bottom,var(--lc-parch-edge),color-mix(in srgb,var(--lc-parch-edge) 80%,var(--lc-wood)))}
+.loccard .lc-art::after{display:none}
+.loccard .lc-body{margin:-30px 12px 12px;padding:10px 16px 12px;background:linear-gradient(to bottom,#fbf3df,var(--lc-parch) 55%,var(--lc-parch-edge));border-radius:12px;box-shadow:0 0 0 1.5px var(--lc-gild),0 6px 16px rgba(0,0,0,.28)}
+.loccard .lc-body::before{margin:0 auto 6px}
+.loccard:not(.has-art) .lc-body{margin:0 12px 12px}
+.loccard .lc-frame::after{z-index:1}
+@media (max-width:519px){.loccard .lc-body{margin:-22px 8px 8px;padding:8px 10px 10px}}
