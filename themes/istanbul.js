@@ -20,7 +20,7 @@ window.THEME = {
     tile: 'mosque tile', tiles: 'mosque tiles',
     market: 'bazaar',
     card: 'bonus card', cards: 'bonus cards',
-    coffee: 'coffee', coffeeLong: 'coffee',
+    coffee: 'coffee', coffee1: 'coffee', coffeeLong: 'coffee',
     trader: 'Coffee Trader',
     guildCard: 'guild card', guildCards: 'guild cards'
   },

@@ -24,8 +24,8 @@ window.THEME = {
     tile: 'lodge badge', tiles: 'lodge badges',
     market: 'market town',
     card: 'favour card', cards: 'favour cards',
-    coffee: 'tea', coffeeLong: 'mushroom tea',
-    trader: 'Tea-Seller', traderName: 'Sorrel', traderTitle: 'Sorrel, Squirrel Tea-Seller',
+    coffee: 'mushrooms', coffee1: 'mushroom', coffeeLong: 'mushrooms',
+    trader: 'Forager', traderName: 'Sorrel', traderTitle: 'Sorrel, Squirrel Forager',
     guildCard: 'guild card', guildCards: 'guild cards',
     orders: 'Orders'
   },
@@ -62,14 +62,14 @@ window.THEME = {
           desc: 'Carry enough Honey or Pearls to earn that lodge badge, pay one of the goods, and gain its perk. Holding both badges here earns a Gold Feather.' },
     16: { name: "Madame Glimmer's Hoard", short: "Glimmer's Hoard",
           desc: 'Madame Glimmer, a magpie of expensive tastes, sells a Gold Feather for the price shown. Every purchase raises the price by 1 Copper.' },
-    17: { name: 'The Mushroom Roastery', short: 'Roastery',
-          desc: 'Do 1 to 3 of these, each once: pay 2 Coppers, pay 1 good, or give up a favour card. Each brews 2 mushroom tea.' },
+    17: { name: 'Mushroom Grotto', short: 'Grotto',
+          desc: 'The foragers trade from their damp little cave. Do 1 to 3 of these, each once: pay 2 Coppers, pay 1 good, or give up a favour card. Each gets you 2 mushrooms.' },
     18: { name: 'Guild Hall', short: 'Guild Hall',
-          desc: 'Take 1 mushroom tea. (Preview: guild cards arrive in the next update.)' },
-    19: { name: 'The Gutterlane Snug', short: 'Gutterlane Snug',
-          desc: 'Slip the regulars some tea for the Barrier, a Snug favour or a Gold Feather. (Preview: opens in a later update.)' },
-    20: { name: 'The Tea House', short: 'Tea House',
-          desc: 'Serve mushroom tea for a Gold Feather. The first costs 6 tea, and each Feather taken makes the next cost 1 more.' }
+          desc: 'Take 1 mushroom. (Preview: guild cards arrive in the next update.)' },
+    19: { name: 'Gutterlane Snug', short: 'Gutterlane Snug',
+          desc: 'Slip the regulars some mushrooms for the Barrier, a Snug favour or a Gold Feather. (Preview: opens in a later update.)' },
+    20: { name: 'Roastery', short: 'Roastery',
+          desc: 'Your mushrooms are roasted and brewed into the tea the Ascendancy craves, for a Gold Feather. The first costs 6 mushrooms, and each Feather taken makes the next cost 1 more.' }
   },
 
   cards: {
@@ -83,14 +83,14 @@ window.THEME = {
     move34:  { name: 'Shortcut',        text: 'Move 3 or 4 places this turn instead of 1 or 2.' },
     recall:  { name: 'Whistle',         text: 'Before moving, call 1 apprentice home.' },
     smAny:   { name: 'Haggle',          text: 'At the Riverside Stalls, sell any types of goods. Offered during that action.' },
-    tea2:    { name: 'Spare pouch',     text: 'Take 2 mushroom tea.' },
-    tea8:    { name: 'Sell a brew',     text: 'Pay 1 mushroom tea and take 8 Coppers.' },
-    diceGift:{ name: 'Lucky bones',     text: 'Roll 2 dice and take a reward for each: 1 = 2 Coppers, 2 = Honey, 3 = Herbs, 4 = Wool, 5 = Pearls, 6 = tea.' },
-    swap3:   { name: 'Swap meet',       text: 'Exchange up to 3 goods or tea for the same number of other goods or tea.' },
+    tea2:    { name: 'Spare pouch',     text: 'Take 2 mushrooms.' },
+    tea8:    { name: 'Truffle buyer',   text: 'Pay 1 mushroom and take 8 Coppers.' },
+    diceGift:{ name: 'Lucky bones',     text: 'Roll 2 dice and take a reward for each: 1 = 2 Coppers, 2 = Honey, 3 = Herbs, 4 = Wool, 5 = Pearls, 6 = a mushroom.' },
+    swap3:   { name: 'Swap meet',       text: 'Exchange up to 3 goods or mushrooms for the same number of other goods or mushrooms.' },
     six:     { name: 'Weighted bone',   text: 'After you roll the dice, turn one die to 6. Offered when you roll.' },
     corner:  { name: 'Back alleys',     text: 'Instead of moving 1 or 2 places, move to any corner place.' },
     dWain:   { name: "Bodkin's favour", text: "At Bodkin's Cartwright, take the action a second time. Offered during that action." },
-    dCH:     { name: 'Second pot',      text: 'At the Tea House, take the action a second time. Offered during that action.' }
+    dCH:     { name: 'Second roast',    text: 'At the Roastery, take the action a second time. Offered during that action.' }
   },
 
   tileAbil: {

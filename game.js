@@ -68,7 +68,7 @@ const NS=k=>W[k+'Name']||('the '+W[k]);
 const NSC=k=>{const v=NS(k);return v[0].toUpperCase()+v.slice(1);};
 const NT=k=>W[k+'Title']||('The '+W[k]);
 const L=n=>`${n} ${W.cur}`;
-const TEA=n=>`${n} ${W.coffee}`;
+const TEA=n=>`${n} ${n===1?(W.coffee1||W.coffee):W.coffee}`;
 const chCost=g=>6+g.chTaken;
 const teaIc=()=>{const ic=ICON('coffee');return ic?`<img class="gi" src="${ic}" alt="${W.coffee}">`:'<span class="gd g-cof"></span>';};
 const plural=(n,one,many)=>n===1?one:many;
@@ -167,10 +167,10 @@ async function resolveMove(ctx,target,mode){
     }
   }
   if(g.x&&g.trader===target&&(p.lira>=2||totalGoods(p)>0)){
-    if(await decide(ctx,p,'confirm',{key:'trader',title:NT('trader'),text:`Take 1 ${W.coffeeLong} for ${L(2)} or 1 good?`,yes:`Take 1 ${W.coffee}`,no:'Ignore'})){
+    if(await decide(ctx,p,'confirm',{key:'trader',title:NT('trader'),text:`Take ${TEA(1)} for ${L(2)} or 1 good?`,yes:`Take ${TEA(1)}`,no:'Ignore'})){
       const pay=await decide(ctx,p,'smugPay',{who:'trader'});
       if(pay==='lira')p.lira-=2;else p.goods[pay]--;
-      p.coffee++;g.trader=rollSum();log(ctx,`${p.name} buys ${W.coffee} from ${NS('trader')}, who moves to the ${PNAME[g.trader]}.`,p);
+      p.coffee++;g.trader=rollSum();log(ctx,`${p.name} buys ${TEA(1)} from ${NS('trader')}, who moves to the ${PNAME[g.trader]}.`,p);
     }
   }
 }
@@ -226,7 +226,7 @@ async function doAction(ctx,p,place){
   case 6:{
     for(let k=1;k<=2;k++){let src='deck';if(g.discard.length)src=await decide(ctx,p,'cardSource',{top:g.discard[g.discard.length-1],n:k});
       const c=drawCard(g,src==='discard');if(c)p.cards.push(c);}
-    log(ctx,`${p.name} takes 2 ${W.cards}${g.x?` and 1 ${W.coffee}`:''}.`,p);if(g.x)p.coffee++;
+    log(ctx,`${p.name} takes 2 ${W.cards}${g.x?` and ${TEA(1)}`:''}.`,p);if(g.x)p.coffee++;
     if(p.cards.length){const i=await decide(ctx,p,'discardCard',{title:`${PNAME[6]}: discard 1`});const [c]=p.cards.splice(i,1);g.discard.push(c);log(ctx,`${p.name} discards “${CARD_DEFS[c].name}”.`,p);}
     break;}
   case 7:{
@@ -309,10 +309,10 @@ async function doAction(ctx,p,place){
       else{const i=await decide(ctx,p,'discardCard',{title:`${PNAME[17]}: give up a ${W.card}`});const[c]=p.cards.splice(i,1);g.discard.push(c);}
       p.coffee+=2;got+=2;
     }
-    log(ctx,got?`${p.name} roasts ${TEA(got)}.`:`${p.name} roasts nothing.`,p);
+    log(ctx,got?`${p.name} gets ${TEA(got)} at the ${PNAME[17]}.`:`${p.name} takes nothing at the ${PNAME[17]}.`,p);
     break;}
   case 18:{
-    p.coffee++;log(ctx,`${p.name} takes 1 ${W.coffee} at the ${PNAME[18]}.`,p);break;}
+    p.coffee++;log(ctx,`${p.name} takes ${TEA(1)} at the ${PNAME[18]}.`,p);break;}
   case 19:{
     note(ctx,p,`The ${PNAME[19]} opens in a later update.`);break;}
   case 20:{
@@ -332,9 +332,9 @@ async function doAction(ctx,p,place){
 async function playExpCard(ctx,p,t){
   const g=ctx.G;
   if(t==='tea2'){useCard(g,p,t);p.coffee+=2;log(ctx,`${p.name} plays “${CARD_DEFS[t].name}” for ${TEA(2)}.`,p);return true;}
-  if(t==='tea8'){if(p.coffee<1)return false;useCard(g,p,t);p.coffee--;p.lira+=8;log(ctx,`${p.name} plays “${CARD_DEFS[t].name}”: 1 ${W.coffee} for ${L(8)}.`,p);return true;}
+  if(t==='tea8'){if(p.coffee<1)return false;useCard(g,p,t);p.coffee--;p.lira+=8;log(ctx,`${p.name} plays “${CARD_DEFS[t].name}”: ${TEA(1)} for ${L(8)}.`,p);return true;}
   if(t==='diceGift'){useCard(g,p,t);const d=roll2();setRoll(ctx,p,d,'gift',null);const got=[];
-    d.forEach(v=>{const r=DICE_GIFT[v];if(r==='lira'){p.lira+=2;got.push(L(2));}else if(r==='coffee'){p.coffee++;got.push(`1 ${W.coffee}`);}else if(p.goods[r]<cap(p)){p.goods[r]++;got.push(GNAME[r]);}});
+    d.forEach(v=>{const r=DICE_GIFT[v];if(r==='lira'){p.lira+=2;got.push(L(2));}else if(r==='coffee'){p.coffee++;got.push(TEA(1));}else if(p.goods[r]<cap(p)){p.goods[r]++;got.push(GNAME[r]);}});
     log(ctx,`${p.name} plays “${CARD_DEFS[t].name}”, rolls ${d[0]} and ${d[1]}: ${got.join(', ')||'nothing fits'}.`,p);return true;}
   if(t==='swap3'){
     let n=0;const kinds=[...GOODS,'coffee'];const has=k=>k==='coffee'?p.coffee>0:p.goods[k]>0;const room=k=>k==='coffee'||p.goods[k]<cap(p);
@@ -521,7 +521,7 @@ async function humanDecide(ctx,p,kind,d){
     return sheet(CARD_DEFS.swap3.name,`<p>Exchange ${d.n+1} of up to 3: what do you give?</p>`,[...d.options.map(k=>({label:nm(k),value:k})),{label:d.n?'Done':'Cancel',value:null}]);}
   case 'swapTake':{const nm=k=>k==='coffee'?`${teaIc()} ${W.coffee}`:`${chip(k)} ${GNAME[k]} <small>${p.goods[k]}/${cap(p)}</small>`;
     return sheet(CARD_DEFS.swap3.name,`<p>And what do you take for it?</p>`,[...d.options.map(k=>({label:nm(k),value:k})),{label:'Cancel',value:null}]);}
-  case 'smugPay':if(d.who==='trader')return sheet(`Pay ${NS('trader')}`,`<p>Pay ${L(2)} or 1 good for 1 ${W.coffeeLong}.</p>`,[...(p.lira>=2?[{label:`Pay ${L(2)}`,value:'lira',primary:true}]:[]),...GOODS.filter(c=>p.goods[c]>0).map(c=>({label:`Pay 1 ${chip(c)} ${GNAME[c]}`,value:c}))]);
+  case 'smugPay':if(d.who==='trader')return sheet(`Pay ${NS('trader')}`,`<p>Pay ${L(2)} or 1 good for ${TEA(1)}.</p>`,[...(p.lira>=2?[{label:`Pay ${L(2)}`,value:'lira',primary:true}]:[]),...GOODS.filter(c=>p.goods[c]>0).map(c=>({label:`Pay 1 ${chip(c)} ${GNAME[c]}`,value:c}))]);
     return sheet(`Pay ${NS('smug')}`,`<p>Pay ${L(2)} or 1 good.</p>`,[...(p.lira>=2?[{label:`Pay ${L(2)}`,value:'lira',primary:true}]:[]),...GOODS.filter(c=>p.goods[c]>0).map(c=>({label:`Pay 1 ${chip(c)} ${GNAME[c]}`,value:c}))]);
   }
 }
@@ -542,7 +542,7 @@ async function cardTap(pi,i){
   if(t==='recall'){playable=moving&&Object.keys(p.assist).length>0;if(!moving)hint='Only before you move.';else if(!playable)hint=`All your ${W.assistants} are already with you.`;}
   if(['dSultan','dPost','dGem','smAny','six','dWain','dCH'].includes(t))hint=t==='six'?'You will be offered this card when you roll the dice.':'You will be offered this card during that action.';
   if(t==='tea2'||t==='diceGift')playable=canAct;
-  if(t==='tea8'){playable=canAct&&p.coffee>0;if(canAct&&!p.coffee)hint=`You need 1 ${W.coffee}.`;}
+  if(t==='tea8'){playable=canAct&&p.coffee>0;if(canAct&&!p.coffee)hint=`You need ${TEA(1)}.`;}
   if(t==='swap3'){playable=canAct&&(totalGoods(p)+p.coffee)>0;}
   if(t==='corner'){playable=moving;label=UI.mode===t?'Cancel':'Use for this move';if(!moving)hint='Only before you move.';}
   UI.busy=true;
@@ -790,8 +790,8 @@ function rulesSheet(){
       <li><b>${W.assistants[0].toUpperCase()+W.assistants.slice(1)}.</b> Leave one ${W.assistant} at the place, or pick up the one waiting there. With no ${W.assistant} along, your turn ends. The ${PNAME[7]} needs none.</li>
       <li><b>Other ${W.merchants}.</b> Pay ${L(2)} to each other ${W.merchant} already there.</li>
       <li><b>Action.</b> Take the place's action (it's optional).</li>
-      <li><b>Encounters.</b> Catch another player's ${W.family} for a reward, and deal with ${NS('gov')} or ${NS('smug')} if they're here.${X?` ${NSC('trader')} sells 1 ${W.coffeeLong} for ${L(2)} or 1 good.`:''}</li>
-    </ol>${X?`<p><b>${W.coffeeLong[0].toUpperCase()+W.coffeeLong.slice(1)}.</b> Brew it at the ${PNAME[17]}, buy it from ${NS('trader')}, and pick 1 up at the ${PNAME[6]}. Spend it at the ${PNAME[20]} for ${W.rubies}. The game ends at 6 ${W.rubies}.</p>`:''}
+      <li><b>Encounters.</b> Catch another player's ${W.family} for a reward, and deal with ${NS('gov')} or ${NS('smug')} if they're here.${X?` ${NSC('trader')} sells ${TEA(1)} for ${L(2)} or 1 good.`:''}</li>
+    </ol>${X?`<p><b>${W.coffeeLong[0].toUpperCase()+W.coffeeLong.slice(1)}.</b> Get them at the ${PNAME[17]}, buy them from ${NS('trader')}, and pick up 1 at the ${PNAME[6]}. Spend them at the ${PNAME[20]} for ${W.rubies}. The game ends at 6 ${W.rubies}.</p>`:''}
     <h4>Places</h4>
     <div class="rplaces">${pl.map(n=>`<div><b>${n}. ${PNAME[n]}</b><span>${PDESC[n]}</span></div>`).join('')}</div>
     <h4>${W.tiles[0].toUpperCase()+W.tiles.slice(1)}</h4>
@@ -870,7 +870,7 @@ function preview(p,pl,mode){
   if(fams.length)out.push({t:`Catch ${fams.map(q=>esc(q.name)).join(', ')}'s ${W.family} for a reward.`,c:'good'});
   if(G.gov===pl)out.push({t:`${NSC('gov')} is here: draw a ${W.card} for ${L(2)} or a card.`});
   if(G.smug===pl)out.push({t:`${NSC('smug')} is here: take a good for ${L(2)} or a good.`});
-  if(G.x&&G.trader===pl)out.push({t:`${NSC('trader')} is here: buy 1 ${W.coffeeLong} for ${L(2)} or a good.`});
+  if(G.x&&G.trader===pl)out.push({t:`${NSC('trader')} is here: buy ${TEA(1)} for ${L(2)} or a good.`});
   return out;
 }
 function render(){
