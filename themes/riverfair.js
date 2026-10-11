@@ -85,7 +85,8 @@ window.THEME = {
       3: 'art/tiles/03-herb-cellar.webp',
       4: 'art/tiles/04-hive-barn.webp',
       5: 'art/tiles/05-pigeon-roost.webp',
-      7: 'art/tiles/07-town-well.webp'
+      7: 'art/tiles/07-town-well.webp',
+      8: 'art/tiles/08-rat-alley.webp'
     },
     merchants: {
       red: 'art/standees/hedgehog.webp',
