@@ -255,3 +255,6 @@ body.has-movebar .wrap{padding-bottom:96px}
 .tile .tok .standee{height:calc(var(--sh) * var(--sh2,1))}
 .tile .tok .standee+.standee{margin-left:calc(var(--sh) * var(--sh2,1) * -0.45)}
 .tile .again{bottom:auto;top:calc(100% - 22px)}
+.portrait{width:40px;height:40px;border-radius:50%;overflow:hidden;flex:none;display:inline-flex;align-items:flex-start;justify-content:center;background:color-mix(in srgb,currentColor 30%,var(--surface));box-shadow:0 0 0 2px currentColor;color:var(--p-red)}
+.portrait.c-green{color:var(--p-green)}.portrait.c-yellow{color:var(--p-yellow)}.portrait.c-white{color:var(--p-white)}.portrait.c-teal{color:var(--p-teal)}
+.portrait{background-size:250% auto;background-repeat:no-repeat;background-position:86% 2%}

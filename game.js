@@ -17,7 +17,7 @@ const MOSQUE={14:['r','g'],15:['y','b']};
 const TILE_ABIL=T.tileAbil;
 const CARD_COUNTS={good:4,lira5:4,dSultan:2,dPost:2,dGem:2,family:2,stay:2,move34:4,recall:2,smAny:2};
 const CARD_DEFS={};for(const k in CARD_COUNTS)CARD_DEFS[k]={n:CARD_COUNTS[k],...T.cards[k]};
-const COLORS=['red','green','yellow','white','teal'];
+const COLORS=['red','green','yellow','teal','white'];
 const AI_NAMES=T.aiNames;
 const STORE='istanbul-table-v1';
 const ABORT={abort:true};
@@ -756,7 +756,8 @@ function render(){
     const me=q===p&&!G.over;const mine=ON.code?ownerOf(q)===ME:false;const away=ON.code&&!q.ai&&!(ON.data&&ON.data.presence&&ON.data.presence[ownerOf(q)]);const out=Object.entries(q.assist).map(([k,n])=>SHORT[k]+(n>1?' ×'+n:'')).join(', ');
     const showHand=ON.code?mine:(me&&!q.ai);
     const canRejoin=ON.code&&away&&!q.ai&&!G.players.some(x=>ownerOf(x)===ME);
-    return `<div class="pl" data-pi="${q.i}"><div class="plh"><i class="mer c-${q.color}"></i><span class="nm">${esc(q.name)}</span>${q.ai?'<span class="tag">AI</span>':''}${mine?'<span class="tag">You</span>':''}${away?'<span class="tag">Away</span>':''}${me?'<span class="tag turn">Turn</span>':''}
+    const port=T.art.merchants&&T.art.merchants[q.color];
+    return `<div class="pl" data-pi="${q.i}"><div class="plh">${port?`<span class="portrait c-${q.color}" style="background-image:url('${port}')"></span>`:`<i class="mer c-${q.color}"></i>`}<span class="nm">${esc(q.name)}</span>${q.ai?'<span class="tag">AI</span>':''}${mine?'<span class="tag">You</span>':''}${away?'<span class="tag">Away</span>':''}${me?'<span class="tag turn">Turn</span>':''}
       <span class="rubies" aria-label="${q.rubies} ${W.rubies}">${[...Array(tgt)].map((_,i)=>`<span class="${i<q.rubies?'ruby':'off'}">◆</span>`).join('')}${q.rubies>tgt?`<span class="ruby">+${q.rubies-tgt}</span>`:''}</span></div>
       <div class="stats"><span><b>${q.lira}</b> ${W.cur}</span><span><b>${q.stack}</b> ${plural(q.stack,W.assistant,W.assistants)} along${out?` <span class="muted">· out: ${out}</span>`:''}</span><span class="muted">${W.family[0].toUpperCase()+W.family.slice(1)}: ${SHORT[q.family]}</span>
       <span class="tiles4" title="${W.tiles}">${GOODS.map(c=>`<span class="mt ${q.tiles[c]?'on g-'+c:''}" title="${GNAME[c]} tile"></span>`).join('')}</span></div>
