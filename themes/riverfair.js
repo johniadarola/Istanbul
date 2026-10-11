@@ -84,6 +84,7 @@ window.THEME = {
       2: 'art/tiles/02-wool-loft.webp',
       3: 'art/tiles/03-herb-cellar.webp',
       4: 'art/tiles/04-hive-barn.webp',
+      5: 'art/tiles/05-pigeon-roost.webp',
       7: 'art/tiles/07-town-well.webp'
     },
     merchants: {
