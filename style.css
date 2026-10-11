@@ -433,3 +433,6 @@ body.t-riverfair{
 .ast.icon img,.fam.icon img{background:#fbf3df}
 .rubies img.gi.fe{width:18px;height:18px;vertical-align:-3px}
 .rubies .off img.gi.fe{filter:grayscale(1) opacity(.3)}
+/* Riverfair: pearls are pearly white-blue rather than bright blue */
+body.t-riverfair{--g-b:#b9c6e3}
+.t-riverfair .pip.g-b,.t-riverfair .gd.g-b,.t-riverfair .mt.on.g-b{box-shadow:inset 0 0 0 1px #6b7aa0}
