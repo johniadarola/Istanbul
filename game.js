@@ -56,6 +56,10 @@ const CS=()=>{const ic=ICON('coin');return ic?`<img class="gi" src="${ic}" alt="
 const CD=()=>{const ic=ICON('card');return ic?`<img class="gi" src="${ic}" alt="${W.card}">`:'';};
 const coinIc=()=>{const ic=ICON('coin');return ic?`<img class="gi" src="${ic}" alt="${W.cur}">`:'';};
 const clone=o=>JSON.parse(JSON.stringify(o));
+/* character names: themes may give a short name and a full title; otherwise "the Governor" */
+const NS=k=>W[k+'Name']||('the '+W[k]);
+const NSC=k=>{const v=NS(k);return v[0].toUpperCase()+v.slice(1);};
+const NT=k=>W[k+'Title']||('The '+W[k]);
 const L=n=>`${n} ${W.cur}`;
 const plural=(n,one,many)=>n===1?one:many;
 function checkGen(ctx){if(!ctx.sim&&ctx.gen!==GEN)throw ABORT;}
@@ -126,21 +130,21 @@ async function resolveMove(ctx,target,mode){
     }}
   }
   if(g.gov===target&&(g.deck.length||g.discard.length)){
-    if(await decide(ctx,p,'confirm',{key:'gov',title:`The ${W.gov}`,text:`Draw a ${W.card}, then pay ${L(2)} or discard a ${W.card}.`,yes:'Draw a card',no:'Ignore'})){
+    if(await decide(ctx,p,'confirm',{key:'gov',title:NT('gov'),text:`Draw a ${W.card}, then pay ${L(2)} or discard a ${W.card}.`,yes:'Draw a card',no:'Ignore'})){
       const c=drawCard(g);if(c)p.cards.push(c);
       const pay=await decide(ctx,p,'govPay',{});
       if(pay==='lira'){p.lira-=2;}else{const [d]=p.cards.splice(pay,1);g.discard.push(d);}
-      g.gov=rollSum();log(ctx,`${p.name} deals with the ${W.gov}, who moves to the ${PNAME[g.gov]}.`,p);
+      g.gov=rollSum();log(ctx,`${p.name} deals with ${NS('gov')}, who moves to the ${PNAME[g.gov]}.`,p);
     }
   }
   if(g.smug===target){
     const room=GOODS.filter(c=>p.goods[c]<cap(p));
-    if(room.length&&await decide(ctx,p,'confirm',{key:'smug',title:`The ${W.smug}`,text:`Take 1 good of your choice, then pay ${L(2)} or 1 good.`,yes:'Take a good',no:'Ignore'})){
-      const c=await decide(ctx,p,'pickGood',{key:'smug',title:`The ${W.smug}`,text:'Take 1 good.',options:room});
+    if(room.length&&await decide(ctx,p,'confirm',{key:'smug',title:NT('smug'),text:`Take 1 good of your choice, then pay ${L(2)} or 1 good.`,yes:'Take a good',no:'Ignore'})){
+      const c=await decide(ctx,p,'pickGood',{key:'smug',title:NT('smug'),text:'Take 1 good.',options:room});
       p.goods[c]++;
       const pay=await decide(ctx,p,'smugPay',{});
       if(pay==='lira')p.lira-=2;else p.goods[pay]--;
-      g.smug=rollSum();log(ctx,`${p.name} deals with the ${W.smug}, who moves to the ${PNAME[g.smug]}.`,p);
+      g.smug=rollSum();log(ctx,`${p.name} deals with ${NS('smug')}, who moves to the ${PNAME[g.smug]}.`,p);
     }
   }
 }
@@ -226,9 +230,9 @@ async function doAction(ctx,p,place){
   case 13:{
     let times=0;
     for(;;){
-      if(g.sultanTaken>=g.sultanRubies){if(!times)note(ctx,p,`The ${W.king} has no ${W.rubies} left.`);break;}
+      if(g.sultanTaken>=g.sultanRubies){if(!times)note(ctx,p,`${NSC('king')} has no ${W.rubies} left.`);break;}
       const req=sultanReq(g);
-      if(!canPaySultan(p,req)){if(!times)note(ctx,p,`The ${W.king} wants ${req.length} goods you don't have.`);break;}
+      if(!canPaySultan(p,req)){if(!times)note(ctx,p,`${NSC('king')} wants ${req.length} goods you don't have.`);break;}
       if(times===0){if(!await decide(ctx,p,'confirm',{key:'sultan',title:PNAME[13],text:`Deliver ${req.length} goods for a ${W.ruby}? <span class="chips">${req.map(chip).join('')}</span>`,yes:'Deliver'}))break;}
       else{if(!hasCard(p,'dSultan')||!await decide(ctx,p,'confirm',{key:'dSultan',title:CARD_DEFS.dSultan.name,text:`Play your ${W.card} to deliver again? <span class="chips">${req.map(chip).join('')}</span>`,yes:'Play card'}))break;useCard(g,p,'dSultan');}
       req.forEach(x=>{if(x!=='*')p.goods[x]--;});
@@ -409,8 +413,8 @@ async function humanDecide(ctx,p,kind,d){
   case 'mosqueColor':return sheet(`Claim a ${W.tile}`,'<p>Pay 1 of the shown goods to take the tile.</p>',[...d.options.map(c=>({label:`${chip(c)} ${GNAME[c]} tile <small>needs ${G.mosque[c][0]} · ${TILE_ABIL[c]}</small>`,value:c})),{label:'Skip',value:null}]);
   case 'policeTarget':return sheet(PNAME[12],`<p>Send your ${W.family} to any place and take that action there. No ${W.assistant} needed and no encounters.</p>`,[...d.options.map(pl=>({label:PNAME[pl],value:pl})),{label:'Skip',value:null}],{grid:true});
   case 'familyReward':return sheet(`${W.family[0].toUpperCase()+W.family.slice(1)} caught`,`<p>You sent ${d.name}'s ${W.family} to the ${PNAME[12]}. Choose your reward.</p>`,[{label:`Take ${L(3)}`,value:'lira',primary:true},{label:`Draw a ${W.card}`,value:'card'}]);
-  case 'govPay':return sheet(`Pay the ${W.gov}`,`<p>Pay ${L(2)} or discard a ${W.card}.</p>`,[...(p.lira>=2?[{label:`Pay ${L(2)}`,value:'lira',primary:true}]:[]),...p.cards.map((c,i)=>({label:'Discard “'+CARD_DEFS[c].name+'”',value:i}))]);
-  case 'smugPay':return sheet(`Pay the ${W.smug}`,`<p>Pay ${L(2)} or 1 good.</p>`,[...(p.lira>=2?[{label:`Pay ${L(2)}`,value:'lira',primary:true}]:[]),...GOODS.filter(c=>p.goods[c]>0).map(c=>({label:`Pay 1 ${chip(c)} ${GNAME[c]}`,value:c}))]);
+  case 'govPay':return sheet(`Pay ${NS('gov')}`,`<p>Pay ${L(2)} or discard a ${W.card}.</p>`,[...(p.lira>=2?[{label:`Pay ${L(2)}`,value:'lira',primary:true}]:[]),...p.cards.map((c,i)=>({label:'Discard “'+CARD_DEFS[c].name+'”',value:i}))]);
+  case 'smugPay':return sheet(`Pay ${NS('smug')}`,`<p>Pay ${L(2)} or 1 good.</p>`,[...(p.lira>=2?[{label:`Pay ${L(2)}`,value:'lira',primary:true}]:[]),...GOODS.filter(c=>p.goods[c]>0).map(c=>({label:`Pay 1 ${chip(c)} ${GNAME[c]}`,value:c}))]);
   }
 }
 
@@ -627,7 +631,7 @@ function rulesSheet(){
       <li><b>${W.assistants[0].toUpperCase()+W.assistants.slice(1)}.</b> Leave one ${W.assistant} at the place, or pick up the one waiting there. With no ${W.assistant} along, your turn ends. The ${PNAME[7]} needs none.</li>
       <li><b>Other ${W.merchants}.</b> Pay ${L(2)} to each other ${W.merchant} already there.</li>
       <li><b>Action.</b> Take the place's action (it's optional).</li>
-      <li><b>Encounters.</b> Catch another player's ${W.family} for a reward, and deal with the ${W.gov} or ${W.smug} if they're here.</li>
+      <li><b>Encounters.</b> Catch another player's ${W.family} for a reward, and deal with ${NS('gov')} or ${NS('smug')} if they're here.</li>
     </ol>
     <h4>Places</h4>
     <div class="rplaces">${pl.map(n=>`<div><b>${n}. ${PNAME[n]}</b><span>${PDESC[n]}</span></div>`).join('')}</div>
@@ -667,12 +671,12 @@ function tokens(pl){
   G.players.forEach(q=>{if(q.pos===pl)h+=merchantToken(q,q===p&&!G.over);});
   const A=T.art||{};
   const fig=(art,cls,k,title,fallback)=>art?`<i class="mer standee ${cls} ${FACE[k]?'flip':''}" data-k="${k}" title="${title}"><img src="${art}" alt=""></i>`:fallback;
-  G.neutrals.forEach((x,k)=>{if(x.pos===pl)h+=fig(A.neutral,'c-grey','n'+k,`Neutral ${W.merchant}`,`<i class="mer c-grey" data-k="n${k}" title="Neutral ${W.merchant}"></i>`);});
+  G.neutrals.forEach((x,k)=>{if(x.pos===pl)h+=fig(A.neutral,'c-grey','n'+k,(W.neutral||`Neutral ${W.merchant}`),`<i class="mer c-grey" data-k="n${k}" title="Neutral ${W.merchant}"></i>`);});
   const apIc=ICON('apprentice'),coIc=ICON('cousin');
   G.players.forEach(q=>{if(q.assist[pl])h+=`<i class="ast c-${q.color} ${apIc?'icon':''}" data-k="a${q.i}-${pl}" title="${esc(q.name)}'s ${W.assistant}">${apIc?`<img src="${apIc}" alt="">`:''}${q.assist[pl]>1?`<b>${q.assist[pl]}</b>`:''}</i>`;});
   G.players.forEach(q=>{if(q.family===pl)h+=`<i class="fam c-${q.color} ${coIc?'icon':''}" data-k="f${q.i}" title="${esc(q.name)}'s ${W.family}">${coIc?`<img src="${coIc}" alt="">`:''}</i>`;});
-  if(G.gov===pl)h+=fig(A.gov,'npc c-gov','gov',W.gov,`<i class="gov" data-k="gov" title="${W.gov}"><b>${W.gov[0]}</b></i>`);
-  if(G.smug===pl)h+=fig(A.smug,'npc c-smug','smug',W.smug,`<i class="smg" data-k="smug" title="${W.smug}"><b>${W.smug[0]}</b></i>`);
+  if(G.gov===pl)h+=fig(A.gov,'npc c-gov','gov',NT('gov'),`<i class="gov" data-k="gov" title="${W.gov}"><b>${W.gov[0]}</b></i>`);
+  if(G.smug===pl)h+=fig(A.smug,'npc c-smug','smug',NT('smug'),`<i class="smg" data-k="smug" title="${W.smug}"><b>${W.smug[0]}</b></i>`);
   return h;
 }
 function placeDetail(pl){
@@ -699,8 +703,8 @@ function preview(p,pl,mode){
   const h=hintFor(p,pl,mode);if(h.t&&h.k!=='bad')out.push({t:`You'd get: ${h.t.replace(' +catch','')}`,c:h.k==='meh'?'':'good'});
   const fams=G.players.filter(q=>q!==p&&q.family===pl&&pl!==12);
   if(fams.length)out.push({t:`Catch ${fams.map(q=>esc(q.name)).join(', ')}'s ${W.family} for a reward.`,c:'good'});
-  if(G.gov===pl)out.push({t:`The ${W.gov} is here: draw a ${W.card} for ${L(2)} or a card.`});
-  if(G.smug===pl)out.push({t:`The ${W.smug} is here: take a good for ${L(2)} or a good.`});
+  if(G.gov===pl)out.push({t:`${NSC('gov')} is here: draw a ${W.card} for ${L(2)} or a card.`});
+  if(G.smug===pl)out.push({t:`${NSC('smug')} is here: take a good for ${L(2)} or a good.`});
   return out;
 }
 function render(){
