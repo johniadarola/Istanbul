@@ -80,6 +80,7 @@ window.THEME = {
 
   art: {
     tiles: {
+      1: 'art/tiles/01-cartwright.webp',
       2: 'art/tiles/02-wool-loft.webp',
       3: 'art/tiles/03-herb-cellar.webp',
       4: 'art/tiles/04-hive-barn.webp',
