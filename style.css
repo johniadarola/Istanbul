@@ -179,7 +179,7 @@ body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset
 .banner.mine{border-color:var(--turq);box-shadow:0 0 0 2px color-mix(in srgb,var(--turq) 35%,transparent),var(--shadow)}
 .banner .who .mer{width:22px;height:22px}
 /* ---- tile art + hints ---- */
-.tile.art{background-image:linear-gradient(to bottom,color-mix(in srgb,var(--surface) 88%,transparent) 0,color-mix(in srgb,var(--surface) 55%,transparent) 42%,transparent 70%),var(--art);background-size:cover;background-position:center}
+.tile.art{background-image:linear-gradient(to bottom,color-mix(in srgb,var(--surface) 82%,transparent) 0,color-mix(in srgb,var(--surface) 40%,transparent) 36%,color-mix(in srgb,var(--surface) 12%,transparent) 100%),var(--art);background-size:cover,150%;background-position:center,50% 62%;background-repeat:no-repeat}
 .tile .hint{align-self:flex-start;font-size:9.5px;font-weight:800;line-height:1.15;padding:2px 5px;border-radius:6px;background:var(--raised);color:var(--ink);box-shadow:0 0 0 1px var(--line);display:inline-flex;gap:3px;align-items:center;max-width:100%;overflow-wrap:anywhere}
 .tile .hint.h-good{background:color-mix(in srgb,var(--good) 16%,var(--raised));box-shadow:0 0 0 1px color-mix(in srgb,var(--good) 45%,transparent)}
 .tile .hint.h-ruby{background:var(--bole);color:#fff;box-shadow:none}
@@ -245,7 +245,7 @@ body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset
 body.has-movebar .wrap{padding-bottom:96px}
 @media (min-width:900px){#moveBar{display:none!important}body.has-movebar .wrap{padding-bottom:40px}}
 /* ---- large art in the place panel ---- */
-.part{display:block;width:100%;max-height:240px;object-fit:cover;border-radius:10px;margin-bottom:10px}
+.part{display:block;width:100%;max-height:240px;object-fit:cover;object-position:50% 68%;border-radius:10px;margin-bottom:10px}
 @media (min-width:900px){.tile{--sh:74px}}
 /* crowded tiles: standees overlap like figures standing in a group */
 .tile .tok .standee+.standee{margin-left:calc(var(--sh) * -0.42)}

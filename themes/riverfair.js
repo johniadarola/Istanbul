@@ -79,7 +79,9 @@ window.THEME = {
   aiNames: ['Bramble', 'Tansy', 'Corwin', 'Mossy', 'Sedge'],
 
   art: {
-    tiles: {},
+    tiles: {
+      7: 'art/tiles/07-town-well.webp'
+    },
     merchants: {
       red: 'art/standees/hedgehog.webp',
       green: 'art/standees/mouse.webp',
