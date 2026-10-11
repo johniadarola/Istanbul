@@ -724,12 +724,19 @@ function render(){
   const reach=new Set(moving?reachable(G,p,UI.mode):[]);
   $('#board').innerHTML=G.layout.map(pl=>{
     const art=T.art.tiles&&T.art.tiles[pl];const h=reach.has(pl)?hintFor(p,pl,UI.mode):null;
-    return `<button class="tile k-${KIND[pl]} ${art?'art':''} ${reach.has(pl)?'reach':''} ${moving&&!reach.has(pl)?'dim':''} ${UI.sel===pl?'sel':''} ${UI.sugg===pl?'sugg':''}" data-pl="${pl}" aria-label="${PNAME[pl]}${h?': '+h.t.replace(/<[^>]+>/g,''):''}" ${art?`style="--art:url('${art}')"`:''}><span class="pn">${pl}</span><span class="nm">${SHORT[pl]}</span><span class="st">${tileStatus(pl)}</span>${h&&h.t?`<span class="hint h-${h.k||'plain'}">${h.t}</span>`:''}<span class="tok">${tokens(pl)}</span></button>`;}).join('');
-  document.querySelectorAll('.tile').forEach(t=>t.onclick=()=>{UI.sel=+t.dataset.pl;render();});
+    return `<button class="tile k-${KIND[pl]} ${art?'art':''} ${reach.has(pl)?'reach':''} ${moving&&!reach.has(pl)?'dim':''} ${UI.sel===pl?'sel':''} ${UI.sugg===pl?'sugg':''}" data-pl="${pl}" aria-label="${PNAME[pl]}${h?': '+h.t.replace(/<[^>]+>/g,''):''}" ${art?`style="--art:url('${art}')"`:''}><span class="pn">${pl}</span><span class="nm">${SHORT[pl]}</span><span class="st">${tileStatus(pl)}</span>${h&&h.t?`<span class="hint h-${h.k||'plain'}">${h.t}</span>`:''}${UI.sel===pl&&reach.has(pl)?`<span class="again">Tap again to ${UI.mode==='stay'?'stay':'move'}</span>`:''}<span class="tok">${tokens(pl)}</span></button>`;}).join('');
+  document.querySelectorAll('.tile').forEach(t=>t.onclick=()=>{const v=+t.dataset.pl;
+    if(moving&&reach.has(v)&&UI.sel===v&&pendingMove){commitMove(v);return;}
+    UI.sel=v;render();});
+  // phone move bar: shows the picked place with a Move button pinned to the bottom of the screen
+  const bar=$('#moveBar');const pickOk=moving&&UI.sel!=null&&reach.has(UI.sel);
+  bar.hidden=!pickOk;document.body.classList.toggle('has-movebar',pickOk);
+  if(pickOk){const hh=hintFor(p,UI.sel,UI.mode);bar.innerHTML=`<div class="mbt"><b>${PNAME[UI.sel]}</b>${hh.t?`<span class="hint h-${hh.k||'plain'}">${hh.t}</span>`:''}</div><button class="btn primary" id="moveBtn2">${UI.mode==='stay'?'Stay here':'Move here'}</button>`;$('#moveBtn2').onclick=()=>commitMove(UI.sel);}
   // panel
   const pl=UI.sel??p.pos;
   let h='';
   if(moving&&!UI.recapHidden){const rec=recapFor(p);if(rec.length&&G.round+G.current>1)h+=`<div class="recap"><div class="rh"><h4>Since your last turn</h4><button class="btn" id="recapX">Hide</button></div><ul class="log">${rec.map(e=>`<li class="${e.s?'sep':''}">${e.c?`<i class="c-${e.c}"></i>`:''}<span>${esc(e.t)}</span></li>`).join('')}</ul></div>`;}
+  const partArt=T.art.tiles&&T.art.tiles[pl];if(partArt)h+=`<img class="part" src="${partArt}" alt="">`;
   h+=`<div class="ph"><span class="pnum">${pl}</span><h3>${PNAME[pl]}</h3></div><p class="pd">${PDESC[pl]}</p>${placeDetail(pl)}`;
   if(moving){
     if(reach.has(pl))h+=`<ul class="pv">${preview(p,pl,UI.mode).map(x=>`<li class="${x.c||''}">${x.t}</li>`).join('')}</ul><button class="btn primary big" id="moveBtn">${UI.mode==='stay'?'Stay here':'Move here'}</button>`;
@@ -737,7 +744,7 @@ function render(){
     else h+=`<p class="muted">Out of reach: ${dist(G,p.pos,pl)} steps away.</p>`;
   }
   $('#panel').innerHTML=h;
-  const mb=$('#moveBtn');if(mb)mb.onclick=()=>{if(pendingMove){UI.recapHidden=false;pendingMove(pl);}};
+  const mb=$('#moveBtn');if(mb)mb.onclick=()=>commitMove(pl);
   const rx=$('#recapX');if(rx)rx.onclick=()=>{UI.recapHidden=true;render();};
   // players
   const tgt=winTarget(G);
@@ -763,14 +770,15 @@ function render(){
   runFx(before);
   if(ON.code&&ON.driving)queueLive();
 }
+function commitMove(pl){if(!pendingMove)return;UI.recapHidden=false;$('#moveBar').hidden=true;document.body.classList.remove('has-movebar');pendingMove(pl);}
 function showEnd(){
   if(!G||!G.over)return;
   const rows=G.result.map((i,k)=>{const q=G.players[i];return `<tr><td>${k+1}</td><td><i class="mer c-${q.color}" style="width:12px;height:12px;vertical-align:-1px"></i> ${esc(q.name)}</td><td class="ruby">◆ ${q.rubies}</td><td>${q.lira}</td><td>${totalGoods(q)}</td></tr>`;}).join('');
   sheet(`${esc(G.players[G.result[0]].name)} wins`,`<table class="rank"><tr><th>#</th><th>${W.merchant[0].toUpperCase()+W.merchant.slice(1)}</th><th>${W.rubies}</th><th>${W.cur}</th><th>Goods</th></tr>${rows}</table><p class="muted">Ties go to most ${W.cur}, then goods, then ${W.cards}.</p>`,[{label:'Back to the menu',value:'new',primary:true},{label:'Look at the board',value:null}]).then(v=>{if(v==='new')goHome();});
 }
 function setupSheet(){
-  const prev=(G&&G.cfg&&!ON.code)?G.cfg:{players:[{name:lsGet('istanbul-name')||'You',ai:false},{name:AI_NAMES[1],ai:true},{name:AI_NAMES[2],ai:true}],layout:'short'};
-  const names=[lsGet('istanbul-name')||'You',...AI_NAMES.slice(1)];
+  const prev=(G&&G.cfg&&!ON.code)?G.cfg:{players:[{name:lsGet('istanbul-name')||'Player 1',ai:false},{name:AI_NAMES[1],ai:true},{name:AI_NAMES[2],ai:true}],layout:'short'};
+  const names=[lsGet('istanbul-name')||'Player 1',...AI_NAMES.slice(1)];
   const st={n:prev.players.length,players:names.map((n,i)=>prev.players[i]?{name:prev.players[i].name,ai:prev.players[i].ai}:{name:n,ai:true}),layout:prev.layout};
   const w=$('#sheetWrap'),s=$('#sheet');s.className='';
   const draw=()=>{
