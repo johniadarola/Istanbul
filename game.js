@@ -102,9 +102,10 @@ function gainRuby(ctx,p,src){const g=ctx.G;p.rubies++;log(ctx,`${p.name} gains a
 
 async function resolveMove(ctx,target,mode){
   const g=ctx.G,p=cur(g);
+  const from=p.pos;
   p.pos=target;
   log(ctx,mode==='stay'?`${p.name} stays at the ${PNAME[target]}.`:`${p.name} moves to the ${PNAME[target]}.`,p);
-  await sleep(ctx,p.ai?650:420);
+  { const steps=mode==='stay'?0:dist(g,from,target); await sleep(ctx,Math.max(p.ai?650:420,steps*STEP_MS+(p.ai?350:200))); }
   if(target!==7){
     if(mode!=='stay'&&p.assist[target]){p.stack+=p.assist[target];delete p.assist[target];log(ctx,`${p.name} picks up the waiting ${W.assistant}.`,p);}
     else if(p.stack>0){p.stack--;p.assist[target]=(p.assist[target]||0)+1;}
@@ -530,11 +531,16 @@ function runFx(before){
   if(!same){FX.rollSeen=now.roll;FX.quiet=false;return;}
   const b=$('#board'),br=b.getBoundingClientRect();
   // slide tokens from where they were
-  if(!REDUCED)b.querySelectorAll('[data-k]').forEach(el=>{const was=before[el.dataset.k];const r=el.getBoundingClientRect();
-    if(was){const dx=was.x-(r.left-br.left),dy=was.y-(r.top-br.top);if(Math.abs(dx)+Math.abs(dy)>2){
-      el.animate([{translate:`${dx}px ${dy}px`},{translate:'0 0'}],{duration:620,easing:'cubic-bezier(.3,.75,.25,1)'});
-      if(el.classList.contains('standee')){const k=el.dataset.k;if(Math.abs(dx)>4){FACE[k]=dx>0;el.classList.toggle('flip',FACE[k]);}
-        const img=el.querySelector('img');if(img)img.animate([{rotate:'0deg',translate:'0 0'},{rotate:'-7deg',translate:'0 -3px'},{rotate:'6deg',translate:'0 0'},{rotate:'-6deg',translate:'0 -3px'},{rotate:'5deg',translate:'0 0'},{rotate:'0deg',translate:'0 0'}],{duration:620,easing:'linear'});}}}
+  // keep figures that are still walking hidden in place until their walk ends
+  b.querySelectorAll('[data-k]').forEach(el=>{if(WALK[el.dataset.k])el.style.visibility='hidden';});
+  if(!REDUCED)b.querySelectorAll('[data-k]').forEach(el=>{const k=el.dataset.k;if(WALK[k])return;const was=before[k];const r=el.getBoundingClientRect();
+    if(was){const nowPt={x:r.left-br.left,y:r.top-br.top};if(Math.abs(was.x-nowPt.x)+Math.abs(was.y-nowPt.y)<=2)return;
+      const pts=[was];
+      const m=/^m(\d+)$/.exec(k);
+      if(m){const pi=+m[1];const a=prev.players[pi]&&prev.players[pi].pos,z=now.players[pi]&&now.players[pi].pos;
+        if(a&&z&&a!==z)gridPath(a,z).slice(1,-1).forEach(pl=>{const t=b.querySelector(`.tile[data-pl="${pl}"]`);if(t){const tr=t.getBoundingClientRect();pts.push({x:tr.left-br.left+tr.width/2-r.width/2,y:tr.top-br.top+tr.height-r.height-6});}});}
+      pts.push(nowPt);
+      walkToken(b,el,pts,!!m);}
     else el.animate([{scale:0,opacity:0},{scale:1.25,opacity:1,offset:.6},{scale:1}],{duration:380,easing:'ease-out'});});
   const sounds=new Set();
   if(now.players.some((p,i)=>p.pos!==prev.players[i].pos))sounds.add('move');
@@ -557,6 +563,40 @@ function runFx(before){
   if(now.cur!==prev.cur&&!now.over&&isMine(G.players[now.cur]))sounds.add('turn');
   if(sounds.has('ruby'))sounds.delete('coin');
   [...sounds].forEach((s,k)=>setTimeout(()=>sfx(s),k*90));
+}
+/* walking figures: a copy of the token travels above the board, tile by tile, then hands back to the real one */
+const WALK={};
+const STEP_MS=360;
+function gridPath(a,z){
+  const at=pl=>rc(G,pl),pos=(r,c)=>G.layout[r*4+c];
+  let [r,c]=at(a);const [r2,c2]=at(z);const out=[a];
+  while(r!==r2){r+=Math.sign(r2-r);out.push(pos(r,c));}
+  while(c!==c2){c+=Math.sign(c2-c);out.push(pos(r,c));}
+  return out;
+}
+function walkToken(board,el,pts,walking){
+  const k=el.dataset.k;
+  const r=el.getBoundingClientRect();
+  const clone=el.cloneNode(true);clone.removeAttribute('data-k');clone.classList.add('walker');
+  Object.assign(clone.style,{position:'absolute',left:'0',top:'0',margin:'0',width:r.width+'px',height:r.height+'px',zIndex:50,pointerEvents:'none',visibility:'visible'});
+  board.appendChild(clone);
+  el.style.visibility='hidden';WALK[k]=clone;
+  const segs=pts.length-1;
+  const dur=walking?STEP_MS*segs+80:Math.min(900,420+Math.hypot(pts[0].x-pts.at(-1).x,pts[0].y-pts.at(-1).y)*0.6);
+  let frames;
+  if(walking)frames=pts.map((p,i)=>({transform:`translate(${p.x}px,${p.y}px)`,offset:i/segs,easing:'ease-in-out'}));
+  else{const a=pts[0],z=pts.at(-1),mid={x:(a.x+z.x)/2,y:Math.min(a.y,z.y)-40};
+    frames=[{transform:`translate(${a.x}px,${a.y}px) scale(1)`},{transform:`translate(${mid.x}px,${mid.y}px) scale(1.15)`,offset:.5},{transform:`translate(${z.x}px,${z.y}px) scale(1)`}];}
+  const fin=()=>{clone.remove();if(WALK[k]===clone)delete WALK[k];const cur=board.querySelector(`[data-k="${k}"]`);if(cur)cur.style.visibility='';};
+  clone.animate(frames,{duration:dur,fill:'forwards'}).onfinish=fin;
+  if(clone.classList.contains('standee')){
+    const dx=pts.at(-1).x-pts[0].x;if(Math.abs(dx)>4){FACE[k]=dx>0;clone.classList.toggle('flip',FACE[k]);}
+    // turn to face each leg of the walk
+    if(walking)for(let i=1;i<pts.length;i++){const ddx=pts[i].x-pts[i-1].x;if(Math.abs(ddx)>4)setTimeout(()=>clone.classList.toggle('flip',ddx>0),(i-1)*STEP_MS);}
+    const img=clone.querySelector('img');
+    if(img)img.animate([{rotate:'0deg',translate:'0 0'},{rotate:'-7deg',translate:'0 -4px'},{rotate:'0deg',translate:'0 0'},{rotate:'7deg',translate:'0 -4px'},{rotate:'0deg',translate:'0 0'}],{duration:STEP_MS,iterations:Math.max(1,Math.round(dur/STEP_MS)),easing:'linear'});
+  }
+  setTimeout(()=>{if(WALK[k]===clone)fin();},dur+400);
 }
 function popGain(i,html){
   const tok=document.querySelector(`#board [data-k="m${i}"]`);if(!tok)return;
