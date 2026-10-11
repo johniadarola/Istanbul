@@ -76,6 +76,9 @@ window.THEME = {
     b: 'Gain your 5th apprentice right away.'
   },
 
+  /* Storybook serif for place names and headings */
+  fonts: { link: 'Alegreya:wght@500;700;800', display: "'Alegreya', Georgia, serif", tile: "'Alegreya', Georgia, serif" },
+
   aiNames: ['Bramble', 'Tansy', 'Corwin', 'Mossy', 'Sedge'],
 
   art: {

@@ -179,7 +179,7 @@ body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset
 .banner.mine{border-color:var(--turq);box-shadow:0 0 0 2px color-mix(in srgb,var(--turq) 35%,transparent),var(--shadow)}
 .banner .who .mer{width:22px;height:22px}
 /* ---- tile art + hints ---- */
-.tile.art{background-image:linear-gradient(to bottom,color-mix(in srgb,var(--surface) 82%,transparent) 0,color-mix(in srgb,var(--surface) 40%,transparent) 36%,color-mix(in srgb,var(--surface) 12%,transparent) 100%),var(--art);background-size:cover,150%;background-position:center,50% 62%;background-repeat:no-repeat}
+.tile.art{background-image:var(--art);background-size:140%;background-position:50% 72%;background-repeat:no-repeat}
 .tile .hint{align-self:flex-start;font-size:9.5px;font-weight:800;line-height:1.15;padding:2px 5px;border-radius:6px;background:var(--raised);color:var(--ink);box-shadow:0 0 0 1px var(--line);display:inline-flex;gap:3px;align-items:center;max-width:100%;overflow-wrap:anywhere}
 .tile .hint.h-good{background:color-mix(in srgb,var(--good) 16%,var(--raised));box-shadow:0 0 0 1px color-mix(in srgb,var(--good) 45%,transparent)}
 .tile .hint.h-ruby{background:var(--bole);color:#fff;box-shadow:none}
@@ -261,5 +261,31 @@ body.has-movebar .wrap{padding-bottom:96px}
 .mer.standee.c-grey{color:var(--p-grey)}.mer.standee.c-gov{color:var(--gov)}.mer.standee.c-smug{color:var(--smug)}
 .tile .tok .standee.npc{height:calc(var(--sh) * var(--sh2,1) * .78);transform:none}
 /* keep tile text readable over figures */
-.tile .pn,.tile .nm,.tile .st{position:relative;z-index:3;text-shadow:0 0 2px var(--surface),0 0 4px var(--surface),0 0 6px var(--surface)}
 .tile .hint{position:relative;z-index:3}
+
+/* ---- nameplate: text sits on a parchment plate so it never fights the art ---- */
+:root{--f-tile:var(--f-body)}
+.tile .plate{position:relative;z-index:3;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:4px;row-gap:1px;align-items:baseline}
+.tile .plate .pn{grid-row:1;grid-column:1}
+.tile .plate .nm{grid-row:1;grid-column:2;font-family:var(--f-tile)}
+.tile .plate .st{grid-row:2;grid-column:1/-1}
+.tile.art .plate{margin:-5px -5px 0;padding:5px 6px 4px;background:color-mix(in srgb,var(--surface) 90%,transparent);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);border-bottom:1px solid color-mix(in srgb,var(--ink) 14%,transparent);box-shadow:0 2px 6px rgba(0,0,0,.12);border-radius:9px 9px 0 0}
+.tile.art .plate .st{color:color-mix(in srgb,var(--ink) 72%,var(--surface))}
+.tile .pn{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;padding:0 3px;border-radius:999px;background:var(--cobalt);color:var(--on-accent);font-size:9px;font-weight:800;line-height:1;align-self:center}
+.tile .nm{font-size:11.5px;letter-spacing:.005em}
+@media (min-width:520px){.tile .nm{font-size:14px}.tile .pn{min-width:17px;height:17px;font-size:10px}}
+@media (min-width:900px){.tile .nm{font-size:16px}}
+.tile.art::after{border-color:transparent}
+.tile.art.dim{opacity:1;filter:saturate(.45) brightness(.92)}
+.tile .hint{margin-top:3px}
+/* phones: one compact plate, no mid-word breaks, slimmer hints */
+.tile .nm{overflow-wrap:normal;word-break:normal;hyphens:manual}
+@media (max-width:519px){
+  .tile .plate{column-gap:0;row-gap:0}
+  .tile .plate .pn{display:none}
+  .tile .plate .nm{grid-column:1/-1;font-size:11px;line-height:1.05;letter-spacing:-.01em}
+  .tile .plate .st{font-size:8.5px;gap:1px;line-height:1.1;margin-top:1px}
+  .tile .plate .st .gd{width:7px;height:7px}
+  .tile.art .plate{padding:4px 5px 3px}
+  .tile .hint{font-size:8.5px;padding:1px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block;margin-top:2px}
+}

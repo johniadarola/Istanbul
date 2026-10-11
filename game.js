@@ -730,7 +730,7 @@ function render(){
   const reach=new Set(moving?reachable(G,p,UI.mode):[]);
   $('#board').innerHTML=G.layout.map(pl=>{
     const art=T.art.tiles&&T.art.tiles[pl];const h=reach.has(pl)?hintFor(p,pl,UI.mode):null;
-    return `<button class="tile k-${KIND[pl]} ${art?'art':''} ${reach.has(pl)?'reach':''} ${moving&&!reach.has(pl)?'dim':''} ${UI.sel===pl?'sel':''} ${UI.sugg===pl?'sugg':''}" data-pl="${pl}" aria-label="${PNAME[pl]}${h?': '+h.t.replace(/<[^>]+>/g,''):''}" ${art?`style="--art:url('${art}')"`:''}><span class="pn">${pl}</span><span class="nm">${SHORT[pl]}</span><span class="st">${tileStatus(pl)}</span>${h&&h.t?`<span class="hint h-${h.k||'plain'}">${h.t}</span>`:''}${UI.sel===pl&&reach.has(pl)?`<span class="again">Tap again to ${UI.mode==='stay'?'stay':'move'}</span>`:''}<span class="tok n${Math.min(5,G.players.filter(q=>q.pos===pl&&T.art.merchants&&T.art.merchants[q.color]).length+(T.art.neutral?G.neutrals.filter(x=>x.pos===pl).length:0)+(T.art.gov&&G.gov===pl?1:0)+(T.art.smug&&G.smug===pl?1:0))}">${tokens(pl)}</span></button>`;}).join('');
+    return `<button class="tile k-${KIND[pl]} ${art?'art':''} ${reach.has(pl)?'reach':''} ${moving&&!reach.has(pl)?'dim':''} ${UI.sel===pl?'sel':''} ${UI.sugg===pl?'sugg':''}" data-pl="${pl}" aria-label="${PNAME[pl]}${h?': '+h.t.replace(/<[^>]+>/g,''):''}" ${art?`style="--art:url('${art}')"`:''}><span class="plate"><span class="pn">${pl}</span><span class="nm">${SHORT[pl]}</span><span class="st">${tileStatus(pl)}</span></span>${h&&h.t?`<span class="hint h-${h.k||'plain'}">${h.t}</span>`:''}${UI.sel===pl&&reach.has(pl)?`<span class="again">Tap again to ${UI.mode==='stay'?'stay':'move'}</span>`:''}<span class="tok n${Math.min(5,G.players.filter(q=>q.pos===pl&&T.art.merchants&&T.art.merchants[q.color]).length+(T.art.neutral?G.neutrals.filter(x=>x.pos===pl).length:0)+(T.art.gov&&G.gov===pl?1:0)+(T.art.smug&&G.smug===pl?1:0))}">${tokens(pl)}</span></button>`;}).join('');
   document.querySelectorAll('.tile').forEach(t=>t.onclick=()=>{const v=+t.dataset.pl;
     if(moving&&reach.has(v)&&UI.sel===v&&pendingMove){commitMove(v);return;}
     UI.sel=v;render();});
@@ -1018,6 +1018,9 @@ $('#rulesBtn').onclick=rulesSheet;
 $('#soundBtn').onclick=()=>setSound(!SND.on);
 $('#codeChip').onclick=()=>copyText(shareLink(ON.code));
 (function boot(){
+  if(T.fonts){if(T.fonts.link){const l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family='+T.fonts.link+'&display=swap';document.head.appendChild(l);}
+    if(T.fonts.display)document.documentElement.style.setProperty('--f-display',T.fonts.display);
+    if(T.fonts.tile)document.documentElement.style.setProperty('--f-tile',T.fonts.tile);}
   document.title=T.name;$('#brandName').textContent=T.name;$('#footText').textContent=T.foot;
   renderSoundBtn();
   const code=new URLSearchParams(location.search).get('game');
