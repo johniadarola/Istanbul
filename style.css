@@ -242,8 +242,7 @@ body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset
 #moveBar .hint.h-bad{color:var(--bad)}
 #moveBar .hint.h-meh{color:var(--muted)}
 #moveBar .btn{min-width:120px;min-height:46px;font-size:15px}
-body.has-movebar .wrap{padding-bottom:96px}
-@media (min-width:900px){#moveBar{display:none!important}body.has-movebar .wrap{padding-bottom:40px}}
+
 /* ---- large art in the place panel ---- */
 @media (min-width:900px){.tile{--sh:74px}}
 /* crowded tiles: standees overlap like figures standing in a group */
@@ -328,3 +327,102 @@ body.has-movebar .wrap{padding-bottom:96px}
 .loccard:not(.has-art) .lc-body{margin:0 12px 12px}
 .loccard .lc-frame::after{z-index:1}
 @media (max-width:519px){.loccard .lc-body{margin:-22px 8px 8px;padding:8px 10px 10px}}
+
+/* ---- bottom dock (phones): move bar + my status strip ---- */
+#dock{position:fixed;left:0;right:0;bottom:0;z-index:15;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0px);background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(0,0,0,.15)}
+#dock:not(:has(> :not([hidden]))){display:none}
+#dock #moveBar{position:static;box-shadow:none;border-top:0;border-bottom:1px solid var(--line);padding:10px 16px}
+@media (max-width:899px){.wrap{padding-bottom:calc(var(--dock-h,0px) + 24px)}}
+@media (min-width:900px){#dock{display:none!important}}
+#myStrip{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;padding:8px 12px;font-variant-numeric:tabular-nums}
+#myStrip .ms-who{display:flex;align-items:center;gap:7px;background:none;border:0;padding:0;font:inherit;color:var(--ink);cursor:pointer;min-width:0}
+#myStrip .portrait{width:34px;height:34px}
+#myStrip .ms-name{display:flex;flex-direction:column;font-weight:800;font-size:13px;line-height:1.1;text-align:left;max-width:9ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#myStrip .ms-name small{font-weight:700;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+#myStrip .ms-who.turn .ms-name small{color:var(--bole)}
+#myStrip .ms-stat,#myStrip .ms-g{display:inline-flex;align-items:center;gap:3px;font-size:14px}
+#myStrip b{font-weight:800}
+#myStrip small{font-size:10px;color:var(--muted)}
+#myStrip .ms-goods{display:inline-flex;gap:8px;padding:3px 8px;border-radius:10px;background:color-mix(in srgb,var(--ink) 5%,transparent)}
+#myStrip .ms-g .gd{width:11px;height:11px}
+#myStrip .ms-g.full b{color:var(--good)}
+#myStrip .ms-g.zero{opacity:.55}
+#myStrip .ms-ap.bad b{color:var(--bad)}
+#myStrip .ms-feath .ruby{font-size:15px}
+#myStrip .ms-feath b{font-size:16px}
+#myStrip .coin{display:inline-flex;width:16px;height:16px;border-radius:50%;align-items:center;justify-content:center;background:#b87333;color:#fff;font-size:10px;font-weight:800;box-shadow:inset 0 0 0 1.5px #7a4a1c}
+#myStrip .mini-card{width:11px;height:15px;border-radius:2px;background:var(--gov);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35)}
+#myStrip .ast{width:12px;height:12px}
+/* ---- painted icon hooks ---- */
+img.gi{width:1.15em;height:1.15em;object-fit:contain;vertical-align:-.22em;display:inline-block}
+.tile img.gi{width:12px;height:12px}
+#myStrip img.gi{width:20px;height:20px}
+img.gi.fe{width:1.1em;height:1.1em}
+.ast.icon,.fam.icon{background:none;border:0;position:relative;width:16px;height:16px}
+.ast.icon img,.fam.icon img{width:100%;height:100%;object-fit:contain;border-radius:50%;box-shadow:0 0 0 2px currentColor}
+.ast.icon b{position:absolute;right:-4px;top:-4px;font-size:9px;background:var(--surface);border-radius:999px;padding:0 3px;color:var(--ink)}
+.ast.c-red,.fam.c-red{color:var(--p-red)}.ast.c-green,.fam.c-green{color:var(--p-green)}.ast.c-yellow,.fam.c-yellow{color:var(--p-yellow)}.ast.c-white,.fam.c-white{color:var(--p-white)}.ast.c-teal,.fam.c-teal{color:var(--p-teal)}
+/* ================= Riverfair chrome: parchment page, wooden board, framed pop-ups ================= */
+body.t-riverfair{
+  --bg:#ece0c4; --surface:#fbf5e6; --raised:#fffaf0; --ink:#2b1f14; --muted:#6d5a45; --line:#dccaa4;
+  --cobalt:#3d6b45; --on-accent:#fffaf0; --turq:#2a9d8f; --bole:#b0412e;
+  --tile-goods:#f3ead4; --tile-money:#f3ead4; --tile-ruby:#f3ead4; --tile-util:#f3ead4;
+  --shadow:0 1px 2px rgba(60,40,15,.10),0 8px 22px rgba(60,40,15,.12);
+  background:var(--bg);
+  background-image:radial-gradient(ellipse at 20% 0%,rgba(255,255,255,.55),transparent 55%),radial-gradient(ellipse at 100% 100%,rgba(120,80,30,.10),transparent 60%);
+  background-attachment:fixed;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) body.t-riverfair{
+  --bg:#1c1610; --surface:#2a2119; --raised:#33281f; --ink:#f1e6d0; --muted:#bba78a; --line:#4a3a2a;
+  --cobalt:#86b88f; --on-accent:#1c1610; --turq:#4cc9b8; --bole:#e2735d;
+  --tile-goods:#2f251c; --tile-money:#2f251c; --tile-ruby:#2f251c; --tile-util:#2f251c;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 22px rgba(0,0,0,.35);
+  background-image:radial-gradient(ellipse at 20% 0%,rgba(255,220,160,.06),transparent 55%);}}
+:root[data-theme="dark"] body.t-riverfair{
+  --bg:#1c1610; --surface:#2a2119; --raised:#33281f; --ink:#f1e6d0; --muted:#bba78a; --line:#4a3a2a;
+  --cobalt:#86b88f; --on-accent:#1c1610; --turq:#4cc9b8; --bole:#e2735d;
+  --tile-goods:#2f251c; --tile-money:#2f251c; --tile-ruby:#2f251c; --tile-util:#2f251c;
+  background-image:radial-gradient(ellipse at 20% 0%,rgba(255,220,160,.06),transparent 55%);}
+/* wooden board */
+.t-riverfair .board{background:linear-gradient(145deg,#8a5a33,#5b3a22 45%,#3e2716);padding:10px;gap:7px;border-radius:18px;box-shadow:0 12px 30px rgba(40,25,10,.35),inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 2px rgba(201,162,74,.55)}
+.t-riverfair .tile{box-shadow:inset 0 0 0 1.5px rgba(201,162,74,.55)}
+.t-riverfair .tile.reach{box-shadow:inset 0 0 0 3px var(--turq),0 0 0 2px rgba(42,157,143,.35)}
+.t-riverfair .tile.sel{box-shadow:inset 0 0 0 3px var(--bole)}
+.t-riverfair .tile .pn{background:radial-gradient(circle at 35% 30%,#e7c873,#c9a24a 55%,#8c6a24);color:#2b1f14}
+/* header + panels */
+.t-riverfair .brand h1{font-family:var(--f-display);color:var(--bole);letter-spacing:.01em}
+.t-riverfair .card{border-color:color-mix(in srgb,#c9a24a 45%,var(--line));border-radius:16px}
+.t-riverfair h4{font-family:var(--f-display);font-size:15px;letter-spacing:.04em;text-transform:none;color:var(--ink)}
+.t-riverfair .banner{border-color:color-mix(in srgb,#c9a24a 45%,var(--line))}
+.t-riverfair .btn{border-radius:12px;border-color:color-mix(in srgb,#c9a24a 40%,var(--line))}
+.t-riverfair .btn.primary{background:linear-gradient(to bottom,color-mix(in srgb,var(--cobalt) 85%,#fff),var(--cobalt));border-color:color-mix(in srgb,var(--cobalt) 70%,#000);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 2px 4px rgba(0,0,0,.18)}
+.t-riverfair .tag.turn{background:var(--bole);border-color:var(--bole)}
+.t-riverfair .display{color:var(--cobalt)}
+.t-riverfair .eyebrow{color:var(--bole)}
+/* framed decision pop-ups */
+.t-riverfair #sheetWrap{background:rgba(30,18,8,.5)}
+.t-riverfair #sheet{background:linear-gradient(to bottom,#fbf3df,#f6ecd4 60%,#ecdcb8);color:#2b1f14;border:7px solid transparent;border-image:linear-gradient(145deg,#8a5a33,#5b3a22 45%,#3e2716) 1;outline:2px solid #c9a24a;outline-offset:-9px;box-shadow:0 -10px 40px rgba(0,0,0,.35)}
+@media (min-width:700px){.t-riverfair #sheet{border-radius:0}}
+.t-riverfair #sheet h2{font-family:var(--f-display);color:#2b1f14;text-align:center;margin-top:4px}
+.t-riverfair #sheet h2::after{content:"";display:block;width:64px;height:9px;margin:6px auto 0;background:radial-gradient(circle,#c9a24a 2.5px,transparent 3px) center/14px 9px repeat-x}
+.t-riverfair #sheet .sbody{text-align:center}
+.t-riverfair #sheet .sbody p{margin-left:auto;margin-right:auto;font-family:var(--f-tile);font-size:15px}
+.t-riverfair #sheet .muted,.t-riverfair #sheet small{color:#6d5a45}
+.t-riverfair #sheet .btn{background:#fffaf0;color:#2b1f14;border-color:#d8c08a}
+.t-riverfair #sheet .btn:hover{border-color:#8c6a24}
+.t-riverfair #sheet .btn.primary{background:linear-gradient(to bottom,#4f8a59,#3d6b45);color:#fffaf0;border-color:#2c4f33}
+.t-riverfair #sheet .srow{border-bottom-color:#e3d1a8;text-align:left}
+.t-riverfair #sheet .total{font-family:var(--f-display);font-size:20px}
+.t-riverfair #sheet .die{background:#fffaf0}
+.t-riverfair #sheet table.rank td,.t-riverfair #sheet table.rank th{border-bottom-color:#e3d1a8;color:#2b1f14}
+.t-riverfair #sheet .fld input,.t-riverfair #sheet select,.t-riverfair #sheet .prow input{background:#fffaf0;color:#2b1f14;border-color:#d8c08a}
+.t-riverfair #sheet .seg button{background:#fffaf0;color:#6d5a45}
+.t-riverfair #sheet .seg button.on{background:#3d6b45;color:#fffaf0}
+.t-riverfair #sheet h4{color:#2b1f14}
+/* gains, dice and ruby card in parchment */
+.t-riverfair .diceroll,.t-riverfair .flourish{background:linear-gradient(to bottom,#fbf3df,#f1e3c3);color:#2b1f14;border-color:#c9a24a}
+.t-riverfair .diceroll .who,.t-riverfair .flourish span{color:#6d5a45}
+.t-riverfair .flourish b{font-family:var(--f-display)}
+.t-riverfair .gain>span{background:#fbf3df;box-shadow:0 0 0 1px #c9a24a,0 2px 8px rgba(0,0,0,.25)}
+/* dock in theme */
+.t-riverfair #dock{background:linear-gradient(to bottom,var(--surface),var(--bg));border-top:2px solid #c9a24a}

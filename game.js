@@ -49,7 +49,10 @@ function probAtLeast(n){let k=0;for(let a=1;a<=6;a++)for(let b=1;b<=6;b++)if(a+b
 function canPaySultan(p,req){const need={r:0,g:0,y:0,b:0};let any=0;req.forEach(x=>x==='*'?any++:need[x]++);for(const c of GOODS)if(p.goods[c]<need[c])return false;return GOODS.reduce((s,c)=>s+p.goods[c]-need[c],0)>=any;}
 function sultanMissing(p,req){const need={r:0,g:0,y:0,b:0};let any=0;req.forEach(x=>x==='*'?any++:need[x]++);let miss=0,spare=0;for(const c of GOODS){miss+=Math.max(0,need[c]-p.goods[c]);spare+=Math.max(0,p.goods[c]-need[c]);}return miss+Math.max(0,any-spare);}
 function postItems(g){return[0,1,2,3].map(i=>i<g.post?POST_TOP[i]:POST_BOT[i]);}
-const chip=c=>`<span class="gd ${c==='*'?'g-any':'g-'+c}"></span>`;
+const ICON=k=>(window.THEME&&THEME.art&&THEME.art.icons&&THEME.art.icons[k])||null;
+const GICON={r:'wool',g:'herbs',y:'honey',b:'pearls','*':'any'};
+const chip=c=>{const ic=ICON(GICON[c]);return ic?`<img class="gi" src="${ic}" alt="${c==='*'?'any good':GNAME[c]}">`:`<span class="gd ${c==='*'?'g-any':'g-'+c}"></span>`;};
+const coinIc=()=>{const ic=ICON('coin');return ic?`<img class="gi" src="${ic}" alt="${W.cur}">`:'';};
 const clone=o=>JSON.parse(JSON.stringify(o));
 const L=n=>`${n} ${W.cur}`;
 const plural=(n,one,many)=>n===1?one:many;
@@ -663,8 +666,9 @@ function tokens(pl){
   const A=T.art||{};
   const fig=(art,cls,k,title,fallback)=>art?`<i class="mer standee ${cls} ${FACE[k]?'flip':''}" data-k="${k}" title="${title}"><img src="${art}" alt=""></i>`:fallback;
   G.neutrals.forEach((x,k)=>{if(x.pos===pl)h+=fig(A.neutral,'c-grey','n'+k,`Neutral ${W.merchant}`,`<i class="mer c-grey" data-k="n${k}" title="Neutral ${W.merchant}"></i>`);});
-  G.players.forEach(q=>{if(q.assist[pl])h+=`<i class="ast c-${q.color}" data-k="a${q.i}-${pl}" title="${esc(q.name)}'s ${W.assistant}">${q.assist[pl]>1?q.assist[pl]:''}</i>`;});
-  G.players.forEach(q=>{if(q.family===pl)h+=`<i class="fam c-${q.color}" data-k="f${q.i}" title="${esc(q.name)}'s ${W.family}"></i>`;});
+  const apIc=ICON('apprentice'),coIc=ICON('cousin');
+  G.players.forEach(q=>{if(q.assist[pl])h+=`<i class="ast c-${q.color} ${apIc?'icon':''}" data-k="a${q.i}-${pl}" title="${esc(q.name)}'s ${W.assistant}">${apIc?`<img src="${apIc}" alt="">`:''}${q.assist[pl]>1?`<b>${q.assist[pl]}</b>`:''}</i>`;});
+  G.players.forEach(q=>{if(q.family===pl)h+=`<i class="fam c-${q.color} ${coIc?'icon':''}" data-k="f${q.i}" title="${esc(q.name)}'s ${W.family}">${coIc?`<img src="${coIc}" alt="">`:''}</i>`;});
   if(G.gov===pl)h+=fig(A.gov,'npc c-gov','gov',W.gov,`<i class="gov" data-k="gov" title="${W.gov}"><b>${W.gov[0]}</b></i>`);
   if(G.smug===pl)h+=fig(A.smug,'npc c-smug','smug',W.smug,`<i class="smg" data-k="smug" title="${W.smug}"><b>${W.smug[0]}</b></i>`);
   return h;
@@ -780,10 +784,40 @@ function render(){
   const myTurn=ON.code&&!G.over&&isMine(p);
   document.title=myTurn?`● Your turn · ${T.name}`:T.name;
   $('#codeChip').hidden=!ON.code;if(ON.code)$('#codeChip').textContent='Game '+ON.code;
+  renderStrip();
   runFx(before);
   if(ON.code&&ON.driving)queueLive();
 }
-function commitMove(pl){if(!pendingMove)return;UI.recapHidden=false;$('#moveBar').hidden=true;document.body.classList.remove('has-movebar');pendingMove(pl);}
+/* ---------- my status strip (phones) ---------- */
+let LAST_HUMAN=null;
+function stripPlayer(){
+  if(!G)return null;
+  if(ON.code)return G.players.find(q=>ownerOf(q)===ME)||null;
+  const p=cur(G);if(!p.ai){LAST_HUMAN=p.i;return p;}
+  if(LAST_HUMAN!=null&&G.players[LAST_HUMAN]&&!G.players[LAST_HUMAN].ai)return G.players[LAST_HUMAN];
+  return G.players.find(q=>!q.ai)||null;
+}
+function renderStrip(){
+  const el=$('#myStrip');const q=stripPlayer();
+  if(!q||$('#table').hidden){el.hidden=true;fitDock();return;}
+  el.hidden=false;
+  const port=T.art.merchants&&T.art.merchants[q.color];
+  const fe=ICON('feather');
+  const turn=q===cur(G)&&!G.over;
+  el.innerHTML=`<button class="ms-who ${turn?'turn':''}" id="msWho" aria-label="Show ${esc(q.name)}'s details">
+      ${port?`<span class="portrait c-${q.color}" style="background-image:url('${port}')"></span>`:`<i class="mer c-${q.color}"></i>`}
+      <span class="ms-name">${esc(q.name)}<small>${turn?'Your turn':'You'}</small></span></button>
+    <span class="ms-stat ms-feath" title="${W.rubies}">${fe?`<img class="gi" src="${fe}" alt="">`:'<span class="ruby">◆</span>'}<b>${q.rubies}</b><small>/${winTarget(G)}</small></span>
+    <span class="ms-stat ms-coin" title="${W.cur}">${coinIc()||'<span class="coin">c</span>'}<b>${q.lira}</b></span>
+    <span class="ms-goods">${GOODS.map(c=>`<span class="ms-g ${q.goods[c]>=cap(q)?'full':''} ${q.goods[c]===0?'zero':''}" title="${GNAME[c]} ${q.goods[c]} of ${cap(q)}">${chip(c)}<b>${q.goods[c]}</b><small>/${cap(q)}</small></span>`).join('')}</span>
+    <span class="ms-stat ms-ap ${q.stack===0?'bad':''}" title="${W.assistants} with you">${ICON('apprentice')?`<img class="gi" src="${ICON('apprentice')}" alt="">`:`<i class="ast c-${q.color}"></i>`}<b>${q.stack}</b></span>
+    <span class="ms-stat ms-cards" title="${W.cards}"><span class="mini-card"></span><b>${q.cards.length}</b></span>`;
+  $('#msWho').onclick=()=>{const t=document.querySelector(`.pl[data-pi="${q.i}"]`);if(t)t.scrollIntoView({behavior:REDUCED?'auto':'smooth',block:'center'});};
+  fitDock();
+}
+function fitDock(){const d=$('#dock');const h=d.offsetHeight||0;document.body.style.setProperty('--dock-h',h+'px');}
+addEventListener('resize',fitDock);
+function commitMove(pl){if(!pendingMove)return;UI.recapHidden=false;$('#moveBar').hidden=true;fitDock();document.body.classList.remove('has-movebar');pendingMove(pl);}
 function showEnd(){
   if(!G||!G.over)return;
   const rows=G.result.map((i,k)=>{const q=G.players[i];return `<tr><td>${k+1}</td><td><i class="mer c-${q.color}" style="width:12px;height:12px;vertical-align:-1px"></i> ${esc(q.name)}</td><td class="ruby">◆ ${q.rubies}</td><td>${q.lira}</td><td>${totalGoods(q)}</td></tr>`;}).join('');
@@ -815,7 +849,7 @@ function rid(n){const a='abcdefghijkmnpqrstuvwxyz23456789';let s='';for(let i=0;
 function rcode(){const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<5;i++)s+=a[Math.floor(Math.random()*a.length)];return s;}
 const shareLink=code=>location.origin+location.pathname+'?game='+code+(T.id!=='istanbul'?'&theme='+T.id:'');
 async function copyText(t){try{await navigator.clipboard.writeText(t);toast('Link copied');}catch(e){toast(t);}}
-function showScreen(name){['home','lobby','table'].forEach(n=>$('#'+n).hidden=n!==name);if(name!=='table'){$('#roundInfo').textContent='';document.title=T.name;}$('#codeChip').hidden=!ON.code;if(ON.code)$('#codeChip').textContent='Game '+ON.code;}
+function showScreen(name){['home','lobby','table'].forEach(n=>$('#'+n).hidden=n!==name);if(name!=='table'){$('#myStrip').hidden=true;$('#moveBar').hidden=true;fitDock();}if(name!=='table'){$('#roundInfo').textContent='';document.title=T.name;}$('#codeChip').hidden=!ON.code;if(ON.code)$('#codeChip').textContent='Game '+ON.code;}
 
 /* ---------- online play (Firebase Realtime Database) ---------- */
 const FIREBASE_CONFIG={
@@ -1029,6 +1063,11 @@ $('#codeChip').onclick=()=>copyText(shareLink(ON.code));
     if(T.fonts.tile)document.documentElement.style.setProperty('--f-tile',T.fonts.tile);}
   document.title=T.name;$('#brandName').textContent=T.name;$('#footText').textContent=T.foot;
   renderSoundBtn();
+  document.body.classList.add('t-'+T.id);
+  const fe=ICON('feather');
+  if(fe){const swap=root=>{const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const hits=[];while(w.nextNode())if(w.currentNode.nodeValue.includes('◆'))hits.push(w.currentNode);
+      hits.forEach(t=>{const parts=t.nodeValue.split('◆');const f=document.createDocumentFragment();parts.forEach((x,i)=>{if(i){const im=document.createElement('img');im.className='gi fe';im.src=fe;im.alt=W.ruby;f.appendChild(im);}if(x)f.appendChild(document.createTextNode(x));});t.replaceWith(f);});};
+    new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>{if(n.nodeType===1)swap(n);else if(n.nodeType===3&&n.parentNode&&n.nodeValue.includes('◆'))swap(n.parentNode);}))).observe(document.body,{childList:true,subtree:true});}
   const code=new URLSearchParams(location.search).get('game');
   if(code)enterOnline(code);else{showScreen('home');renderHome();}
 })();
