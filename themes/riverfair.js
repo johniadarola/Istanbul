@@ -22,12 +22,12 @@ window.THEME = {
     card: 'favour card', cards: 'favour cards'
   },
 
-  goods: { r: 'Cloth', g: 'Herbs', y: 'Honey', b: 'Gems' },
+  goods: { r: 'Berries', g: 'Herbs', y: 'Honey', b: 'Pearls' },
 
   places: {
     1:  { name: "Mole's Cartwright", short: 'Cartwright',
           desc: 'Pay 7 Coppers to add a crate to your handcart, so you can carry one more of each good. Your third crate also earns a Gold Feather.' },
-    2:  { name: "Weavers' Loft", short: "Weavers' Loft", desc: 'Fill your Cloth to capacity.' },
+    2:  { name: 'Berry Larder', short: 'Berry Larder', desc: 'Fill your Berries to capacity.' },
     3:  { name: 'Herb Cellar', short: 'Herb Cellar', desc: 'Fill your Herbs to capacity.' },
     4:  { name: 'Hive Barn', short: 'Hive Barn', desc: 'Fill your Honey to capacity.' },
     5:  { name: 'Pigeon Roost', short: 'Pigeon Roost',
@@ -37,7 +37,7 @@ window.THEME = {
     7:  { name: 'Town Well', short: 'Town Well',
           desc: 'Call all your apprentices home. You need no apprentice here and pay no other traders.' },
     8:  { name: 'Rat Alley', short: 'Rat Alley',
-          desc: 'Take 1 Cloth, Herbs or Honey, then roll for Gems: 7–8 gives 1, 9–10 gives 2, 11–12 gives 3.' },
+          desc: 'Take 1 Berries, Herbs or Honey, then roll for Pearls: 7–8 gives 1, 9–10 gives 2, 11–12 gives 3.' },
     9:  { name: 'Knucklebone Tavern', short: 'Tavern',
           desc: 'Name a number from 3 to 12 and roll two dice. Meet or beat it to take that many Coppers; otherwise take 2.' },
     10: { name: 'Grand Market', short: 'Grand Market',
@@ -48,10 +48,10 @@ window.THEME = {
           desc: 'If your cousin is here, send them to any other place and take that action there for free.' },
     13: { name: "Envoy's Aerie", short: 'Aerie',
           desc: 'Deliver the listed goods to the Heron Envoy for a Gold Feather. Every Feather given makes the next one ask for one more good.' },
-    14: { name: 'Hall of Cloth & Herb', short: 'Cloth & Herb Hall',
-          desc: 'Carry enough Cloth or Herbs to take that guild charter, pay one of the goods, and gain its perk. Holding both charters here earns a Gold Feather.' },
-    15: { name: 'Hall of Honey & Gems', short: 'Honey & Gem Hall',
-          desc: 'Carry enough Honey or Gems to take that guild charter, pay one of the goods, and gain its perk. Holding both charters here earns a Gold Feather.' },
+    14: { name: "Foragers' Hall", short: "Foragers' Hall",
+          desc: 'Carry enough Berries or Herbs to take that guild charter, pay one of the goods, and gain its perk. Holding both charters here earns a Gold Feather.' },
+    15: { name: 'Hall of Honey & Pearls', short: 'Honey & Pearl Hall',
+          desc: 'Carry enough Honey or Pearls to take that guild charter, pay one of the goods, and gain its perk. Holding both charters here earns a Gold Feather.' },
     16: { name: "Magpie's Hoard", short: "Magpie's Hoard",
           desc: 'Buy a Gold Feather for the price shown. Every purchase raises the price by 1 Copper.' }
   },
