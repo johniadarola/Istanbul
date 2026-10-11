@@ -2,7 +2,7 @@
 
 A browser version of Rüdiger Dorn's *Istanbul* for playing with friends. It's an unofficial fan project for personal play.
 
-**Play:** https://johniadarola.github.io/istanbul/
+**Play:** https://johniadarola.github.io/Istanbul/
 
 ## Modes
 - **Play online:** create a game, send the link, and friends join in their browser with no account. Empty seats can be AI merchants. Turns sync live through Firebase Realtime Database, and anyone can close the tab and come back.
