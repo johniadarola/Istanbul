@@ -122,7 +122,11 @@ window.THEME = {
       13: 'art/tiles/13-envoys-aerie.webp',
       14: 'art/tiles/14-hall-wool-herbs.webp',
       15: 'art/tiles/15-hall-honey-pearls.webp',
-      16: 'art/tiles/16-magpies-hoard.webp'
+      16: 'art/tiles/16-magpies-hoard.webp',
+      17: 'art/tiles/17-mushroom-grotto.webp',
+      18: 'art/tiles/18-guild-hall.webp',
+      19: 'art/tiles/19-gutterlane-snug.webp',
+      20: 'art/tiles/20-roastery.webp'
     },
     merchants: {
       red: 'art/standees/hedgehog.webp',
@@ -139,6 +143,7 @@ window.THEME = {
     },
     neutral: 'art/standees/rat.webp',   // the three neutral traders in 2-player games
     gov: 'art/standees/crow.webp',      // Crow Clerk
-    smug: 'art/standees/fox.webp'       // Fox
+    smug: 'art/standees/fox.webp',      // Fox
+    trader: 'art/standees/squirrel.webp' // Sorrel, Squirrel Forager
   }
 };
