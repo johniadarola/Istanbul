@@ -674,7 +674,7 @@ function placeDetail(pl){
   switch(pl){
   case 1:return `<div class="detail"><span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${G.wainRubies}</span></span><span><span class="k">Your extensions</span>${p.ext}/3</span></div>`;
   case 5:return `<div class="detail"><span><span class="k">Showing now</span><span class="chips">${postItems(G).map(it=>it.g?chip(it.g)+' '+GNAME[it.g]:L(it.l)).join(' · ')}</span></span></div>`;
-  case 10:case 11:{const mk=pl===10?G.large:G.small;return `<div class="detail"><span><span class="k">Demand tile</span><span class="chips">${mk[0].map(chip).join('')}</span></span><span><span class="k">Next</span><span class="chips">${mk[1].map(chip).join('')}</span></span></div>`;}
+  case 10:case 11:{const mk=pl===10?G.large:G.small;return `<div class="detail"><span><span class="k">${W.orders||"Demand tile"}</span><span class="chips">${mk[0].map(chip).join('')}</span></span><span><span class="k">Next</span><span class="chips">${mk[1].map(chip).join('')}</span></span></div>`;}
   case 12:{const f=G.players.filter(q=>q.family===12).map(q=>esc(q.name));return `<div class="detail"><span><span class="k">${W.family}s here</span>${f.length?f.join(', '):'none'}</span></div>`;}
   case 13:{const left=G.sultanRubies-G.sultanTaken;return `<div class="detail"><span><span class="k">Next delivery</span>${left?`<span class="chips">${sultanReq(G).map(chip).join('')}</span>`:'—'}</span><span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${left}</span></span></div>`;}
   case 14:case 15:return `<div class="detail">${MOSQUE[pl].map(c=>`<span><span class="k">${GNAME[c]} tile</span>${G.mosque[c].length?`needs ${G.mosque[c][0]} ${chip(c)}`:'gone'} <small class="muted">${TILE_ABIL[c]}</small></span>`).join('')}<span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${G.mosqueRubies[pl]}</span></span></div>`;
@@ -742,8 +742,14 @@ function render(){
   const pl=UI.sel??p.pos;
   let h='';
   if(moving&&!UI.recapHidden){const rec=recapFor(p);if(rec.length&&G.round+G.current>1)h+=`<div class="recap"><div class="rh"><h4>Since your last turn</h4><button class="btn" id="recapX">Hide</button></div><ul class="log">${rec.map(e=>`<li class="${e.s?'sep':''}">${e.c?`<i class="c-${e.c}"></i>`:''}<span>${esc(e.t)}</span></li>`).join('')}</ul></div>`;}
-  const partArt=T.art.tiles&&T.art.tiles[pl];if(partArt)h+=`<img class="part" src="${partArt}" alt="">`;
-  h+=`<div class="ph"><span class="pnum">${pl}</span><h3>${PNAME[pl]}</h3></div><p class="pd">${PDESC[pl]}</p>${placeDetail(pl)}`;
+  const partArt=T.art.tiles&&T.art.tiles[pl];
+  h+=`<article class="loccard k-${KIND[pl]} ${partArt?'has-art':''}" aria-label="${PNAME[pl]}">
+    <div class="lc-frame">
+      ${partArt?`<div class="lc-art"><img src="${partArt}" alt=""></div>`:''}
+      <header class="lc-title"><span class="lc-num">${pl}</span><h3>${PNAME[pl]}</h3></header>
+      <div class="lc-body"><p class="pd">${PDESC[pl]}</p>${placeDetail(pl)}</div>
+    </div>
+  </article>`;
   if(moving){
     if(reach.has(pl))h+=`<ul class="pv">${preview(p,pl,UI.mode).map(x=>`<li class="${x.c||''}">${x.t}</li>`).join('')}</ul><button class="btn primary big" id="moveBtn">${UI.mode==='stay'?'Stay here':'Move here'}</button>`;
     else if(pl===p.pos)h+=`<p class="muted">Your ${W.merchant} is here. Pick a different place to move to.</p>`;

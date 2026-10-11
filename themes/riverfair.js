@@ -19,7 +19,8 @@ window.THEME = {
     king: 'Heron Envoy',
     tile: 'guild charter', tiles: 'guild charters',
     market: 'market town',
-    card: 'favour card', cards: 'favour cards'
+    card: 'favour card', cards: 'favour cards',
+    orders: 'Orders'
   },
 
   goods: { r: 'Wool', g: 'Herbs', y: 'Honey', b: 'Pearls' },
