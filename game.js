@@ -524,7 +524,7 @@ function runFx(before){
   if(!REDUCED)b.querySelectorAll('[data-k]').forEach(el=>{const was=before[el.dataset.k];const r=el.getBoundingClientRect();
     if(was){const dx=was.x-(r.left-br.left),dy=was.y-(r.top-br.top);if(Math.abs(dx)+Math.abs(dy)>2){
       el.animate([{translate:`${dx}px ${dy}px`},{translate:'0 0'}],{duration:620,easing:'cubic-bezier(.3,.75,.25,1)'});
-      if(el.classList.contains('standee')){const i=+el.dataset.k.slice(1);if(Math.abs(dx)>4){FACE[i]=dx>0;el.classList.toggle('flip',FACE[i]);}
+      if(el.classList.contains('standee')){const k=el.dataset.k;if(Math.abs(dx)>4){FACE[k]=dx>0;el.classList.toggle('flip',FACE[k]);}
         const img=el.querySelector('img');if(img)img.animate([{rotate:'0deg',translate:'0 0'},{rotate:'-7deg',translate:'0 -3px'},{rotate:'6deg',translate:'0 0'},{rotate:'-6deg',translate:'0 -3px'},{rotate:'5deg',translate:'0 0'},{rotate:'0deg',translate:'0 0'}],{duration:620,easing:'linear'});}}}
     else el.animate([{scale:0,opacity:0},{scale:1.25,opacity:1,offset:.6},{scale:1}],{duration:380,easing:'ease-out'});});
   const sounds=new Set();
@@ -655,16 +655,18 @@ function tileStatus(pl){
 }
 function merchantToken(q,active){
   const art=T.art.merchants&&T.art.merchants[q.color];
-  return `<i class="mer c-${q.color} ${active?'active':''} ${art?'standee':''} ${art&&FACE[q.i]?'flip':''}" data-k="m${q.i}" title="${esc(q.name)}">${art?`<img src="${art}" alt="">`:q.stack}</i>`;
+  return `<i class="mer c-${q.color} ${active?'active':''} ${art?'standee':''} ${art&&FACE['m'+q.i]?'flip':''}" data-k="m${q.i}" title="${esc(q.name)}">${art?`<img src="${art}" alt="">`:q.stack}</i>`;
 }
 function tokens(pl){
   const p=cur(G);let h='';
   G.players.forEach(q=>{if(q.pos===pl)h+=merchantToken(q,q===p&&!G.over);});
-  G.neutrals.forEach((x,k)=>{if(x.pos===pl)h+=`<i class="mer c-grey" data-k="n${k}" title="Neutral ${W.merchant}"></i>`;});
+  const A=T.art||{};
+  const fig=(art,cls,k,title,fallback)=>art?`<i class="mer standee ${cls} ${FACE[k]?'flip':''}" data-k="${k}" title="${title}"><img src="${art}" alt=""></i>`:fallback;
+  G.neutrals.forEach((x,k)=>{if(x.pos===pl)h+=fig(A.neutral,'c-grey','n'+k,`Neutral ${W.merchant}`,`<i class="mer c-grey" data-k="n${k}" title="Neutral ${W.merchant}"></i>`);});
   G.players.forEach(q=>{if(q.assist[pl])h+=`<i class="ast c-${q.color}" data-k="a${q.i}-${pl}" title="${esc(q.name)}'s ${W.assistant}">${q.assist[pl]>1?q.assist[pl]:''}</i>`;});
   G.players.forEach(q=>{if(q.family===pl)h+=`<i class="fam c-${q.color}" data-k="f${q.i}" title="${esc(q.name)}'s ${W.family}"></i>`;});
-  if(G.gov===pl)h+=`<i class="gov" data-k="gov" title="${W.gov}"><b>${W.gov[0]}</b></i>`;
-  if(G.smug===pl)h+=`<i class="smg" data-k="smug" title="${W.smug}"><b>${W.smug[0]}</b></i>`;
+  if(G.gov===pl)h+=fig(A.gov,'npc c-gov','gov',W.gov,`<i class="gov" data-k="gov" title="${W.gov}"><b>${W.gov[0]}</b></i>`);
+  if(G.smug===pl)h+=fig(A.smug,'npc c-smug','smug',W.smug,`<i class="smg" data-k="smug" title="${W.smug}"><b>${W.smug[0]}</b></i>`);
   return h;
 }
 function placeDetail(pl){
@@ -728,7 +730,7 @@ function render(){
   const reach=new Set(moving?reachable(G,p,UI.mode):[]);
   $('#board').innerHTML=G.layout.map(pl=>{
     const art=T.art.tiles&&T.art.tiles[pl];const h=reach.has(pl)?hintFor(p,pl,UI.mode):null;
-    return `<button class="tile k-${KIND[pl]} ${art?'art':''} ${reach.has(pl)?'reach':''} ${moving&&!reach.has(pl)?'dim':''} ${UI.sel===pl?'sel':''} ${UI.sugg===pl?'sugg':''}" data-pl="${pl}" aria-label="${PNAME[pl]}${h?': '+h.t.replace(/<[^>]+>/g,''):''}" ${art?`style="--art:url('${art}')"`:''}><span class="pn">${pl}</span><span class="nm">${SHORT[pl]}</span><span class="st">${tileStatus(pl)}</span>${h&&h.t?`<span class="hint h-${h.k||'plain'}">${h.t}</span>`:''}${UI.sel===pl&&reach.has(pl)?`<span class="again">Tap again to ${UI.mode==='stay'?'stay':'move'}</span>`:''}<span class="tok n${G.players.filter(q=>q.pos===pl).length}">${tokens(pl)}</span></button>`;}).join('');
+    return `<button class="tile k-${KIND[pl]} ${art?'art':''} ${reach.has(pl)?'reach':''} ${moving&&!reach.has(pl)?'dim':''} ${UI.sel===pl?'sel':''} ${UI.sugg===pl?'sugg':''}" data-pl="${pl}" aria-label="${PNAME[pl]}${h?': '+h.t.replace(/<[^>]+>/g,''):''}" ${art?`style="--art:url('${art}')"`:''}><span class="pn">${pl}</span><span class="nm">${SHORT[pl]}</span><span class="st">${tileStatus(pl)}</span>${h&&h.t?`<span class="hint h-${h.k||'plain'}">${h.t}</span>`:''}${UI.sel===pl&&reach.has(pl)?`<span class="again">Tap again to ${UI.mode==='stay'?'stay':'move'}</span>`:''}<span class="tok n${Math.min(5,G.players.filter(q=>q.pos===pl&&T.art.merchants&&T.art.merchants[q.color]).length+(T.art.neutral?G.neutrals.filter(x=>x.pos===pl).length:0)+(T.art.gov&&G.gov===pl?1:0)+(T.art.smug&&G.smug===pl?1:0))}">${tokens(pl)}</span></button>`;}).join('');
   document.querySelectorAll('.tile').forEach(t=>t.onclick=()=>{const v=+t.dataset.pl;
     if(moving&&reach.has(v)&&UI.sel===v&&pendingMove){commitMove(v);return;}
     UI.sel=v;render();});

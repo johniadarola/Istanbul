@@ -258,3 +258,8 @@ body.has-movebar .wrap{padding-bottom:96px}
 .portrait{width:40px;height:40px;border-radius:50%;overflow:hidden;flex:none;display:inline-flex;align-items:flex-start;justify-content:center;background:color-mix(in srgb,currentColor 30%,var(--surface));box-shadow:0 0 0 2px currentColor;color:var(--p-red)}
 .portrait.c-green{color:var(--p-green)}.portrait.c-yellow{color:var(--p-yellow)}.portrait.c-white{color:var(--p-white)}.portrait.c-teal{color:var(--p-teal)}
 .portrait{background-size:250% auto;background-repeat:no-repeat;background-position:86% 2%}
+.mer.standee.c-grey{color:var(--p-grey)}.mer.standee.c-gov{color:var(--gov)}.mer.standee.c-smug{color:var(--smug)}
+.tile .tok .standee.npc{height:calc(var(--sh) * var(--sh2,1) * .78);transform:none}
+/* keep tile text readable over figures */
+.tile .pn,.tile .nm,.tile .st{position:relative;z-index:3;text-shadow:0 0 2px var(--surface),0 0 4px var(--surface),0 0 6px var(--surface)}
+.tile .hint{position:relative;z-index:3}

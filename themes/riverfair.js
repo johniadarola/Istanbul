@@ -84,8 +84,11 @@ window.THEME = {
       red: 'art/standees/hedgehog.webp',
       green: 'art/standees/mouse.webp',
       yellow: 'art/standees/lizard.webp',
-      teal: 'art/standees/jay.webp'
-      /* white: still to paint */
-    }
+      teal: 'art/standees/jay.webp',
+      white: 'art/standees/toad.webp'
+    },
+    neutral: 'art/standees/rat.webp',   // the three neutral traders in 2-player games
+    gov: 'art/standees/crow.webp',      // Crow Clerk
+    smug: 'art/standees/fox.webp'       // Fox
   }
 };
