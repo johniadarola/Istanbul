@@ -440,3 +440,11 @@ body.t-riverfair{--g-b:#b9c6e3}
 .walker{will-change:transform}
 .walker.standee img{transform-origin:50% 100%}
 .walker.standee.flip img{transform:scaleX(-1)}
+
+/* ---------- expansion: 5×4 board (turned 4×5 on phones), tea, Sorrel ---------- */
+.board.x5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.board .tile{grid-row:var(--r);grid-column:var(--c)}
+@media (max-width:600px){.board.x5{grid-template-columns:repeat(4,minmax(0,1fr))}.board.x5 .tile{grid-row:var(--c);grid-column:var(--r)}}
+.g-cof{background:#7a4a2a;border-radius:50%}
+.trd{display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-weight:800;flex:none;border:1.5px solid var(--tokline);width:15px;height:15px;border-radius:50%;font-size:9px;color:#fff;background:#8a5a2b}
+.mer.standee.c-trader{color:#8a5a2b}

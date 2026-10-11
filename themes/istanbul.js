@@ -19,7 +19,10 @@ window.THEME = {
     king: 'Sultan',
     tile: 'mosque tile', tiles: 'mosque tiles',
     market: 'bazaar',
-    card: 'bonus card', cards: 'bonus cards'
+    card: 'bonus card', cards: 'bonus cards',
+    coffee: 'coffee', coffeeLong: 'coffee',
+    trader: 'Coffee Trader',
+    guildCard: 'guild card', guildCards: 'guild cards'
   },
 
   goods: { r: 'Fabric', g: 'Spice', y: 'Fruit', b: 'Jewelry' },
@@ -53,7 +56,15 @@ window.THEME = {
     15: { name: 'Great Mosque', short: 'Great Mosque',
           desc: 'Carry enough Fruit or Jewelry to take that mosque tile, pay one of the goods, and gain its ability. Owning both tiles here earns a Ruby.' },
     16: { name: 'Gemstone Dealer', short: 'Gem Dealer',
-          desc: 'Buy a Ruby for the price shown. Every purchase raises the price by 1 Lira.' }
+          desc: 'Buy a Ruby for the price shown. Every purchase raises the price by 1 Lira.' },
+    17: { name: 'Roasting Plant', short: 'Roasting Plant',
+          desc: 'Do 1 to 3 of these, each once: pay 2 Lira, pay 1 good, or discard a bonus card. Each gives 2 coffee.' },
+    18: { name: 'Guild Hall', short: 'Guild Hall',
+          desc: 'Take 1 coffee. (Preview: guild cards arrive in the next update.)' },
+    19: { name: 'Tavern', short: 'Tavern',
+          desc: 'Bribe the guests with coffee for the Barrier, a Tavern tile or a Ruby. (Preview: opens in a later update.)' },
+    20: { name: 'Coffee House', short: 'Coffee House',
+          desc: 'Deliver coffee for a Ruby. The first costs 6 coffee, and each Ruby taken makes the next cost 1 more.' }
   },
 
   cards: {
@@ -66,7 +77,15 @@ window.THEME = {
     stay:    { name: 'Stay put',    text: "Don't move this turn. You still leave an assistant where you are." },
     move34:  { name: 'Long stride', text: 'Move 3 or 4 places this turn instead of 1 or 2.' },
     recall:  { name: 'Recall',      text: 'Before moving, bring 1 assistant home to your stack.' },
-    smAny:   { name: 'Any goods',   text: 'At the Small Market, sell any types of goods. Offered during that action.' }
+    smAny:   { name: 'Any goods',   text: 'At the Small Market, sell any types of goods. Offered during that action.' },
+    tea2:    { name: '2 coffee',      text: 'Take 2 coffee.' },
+    tea8:    { name: 'Coffee for Lira', text: 'Pay 1 coffee and take 8 Lira.' },
+    diceGift:{ name: 'Lucky roll',    text: 'Roll 2 dice and take a reward for each: 1 = 2 Lira, 2 = Fruit, 3 = Spice, 4 = Fabric, 5 = Jewelry, 6 = coffee.' },
+    swap3:   { name: 'Exchange',      text: 'Exchange up to 3 goods or coffee for the same number of other goods or coffee.' },
+    six:     { name: 'Loaded die',    text: 'After you roll the dice, turn one die to 6. Offered when you roll.' },
+    corner:  { name: 'Corner run',    text: 'Instead of moving 1 or 2 places, move to any corner place.' },
+    dWain:   { name: 'Wainwright twice', text: 'At the Wainwright, take the action a second time. Offered during that action.' },
+    dCH:     { name: 'Coffee House twice', text: 'At the Coffee House, take the action a second time. Offered during that action.' }
   },
 
   tileAbil: {

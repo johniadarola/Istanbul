@@ -5,9 +5,12 @@ const T=window.THEME, W=T.words;
 const GOODS=['r','g','y','b'];
 const GNAME=T.goods;
 const PNAME={},SHORT={},PDESC={};
-for(let i=1;i<=16;i++){PNAME[i]=T.places[i].name;SHORT[i]=T.places[i].short;PDESC[i]=T.places[i].desc;}
-const KIND={1:'ruby',2:'goods',3:'goods',4:'goods',5:'util',6:'util',7:'util',8:'goods',9:'money',10:'money',11:'money',12:'util',13:'ruby',14:'ruby',15:'ruby',16:'ruby'};
+for(let i=1;i<=20;i++)if(T.places[i]){PNAME[i]=T.places[i].name;SHORT[i]=T.places[i].short;PDESC[i]=T.places[i].desc;}
+const KIND={1:'ruby',2:'goods',3:'goods',4:'goods',5:'util',6:'util',7:'util',8:'goods',9:'money',10:'money',11:'money',12:'util',13:'ruby',14:'ruby',15:'ruby',16:'ruby',17:'goods',18:'util',19:'util',20:'ruby'};
 const LAYOUTS={short:[15,5,2,14,4,12,7,3,8,6,11,9,13,10,1,16],order:[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]};
+/* expansion (Mocha & Baksheesh): 20 places in 5 columns x 4 rows; "short" is the rulebook's first-game layout */
+const LAYOUTS20={short:[16,15,18,3,10,8,1,7,17,4,2,19,6,12,9,20,11,5,14,13],order:[...Array(20)].map((_,i)=>i+1)};
+const DICE_GIFT={1:'lira',2:'y',3:'g',4:'r',5:'b',6:'coffee'};
 const POST_TOP=[{g:'r'},{l:2},{g:'b'},{l:2}], POST_BOT=[{g:'g'},{l:1},{g:'y'},{l:1}];
 const SMALL_TILES=[['r','g','y','y','b'],['r','r','g','y','b'],['g','g','r','y','b'],['y','y','r','g','g'],['r','g','g','y','b']];
 const LARGE_TILES=[['b','b','r','g','y'],['b','r','r','g','y'],['b','b','g','g','y'],['b','b','y','y','r'],['b','r','g','y','y']];
@@ -16,10 +19,13 @@ const SULTAN_SEQ=['b','r','g','y','*','b','r','g','y','*'];
 const MOSQUE={14:['r','g'],15:['y','b']};
 const TILE_ABIL=T.tileAbil;
 const CARD_COUNTS={good:4,lira5:4,dSultan:2,dPost:2,dGem:2,family:2,stay:2,move34:4,recall:2,smAny:2};
-const CARD_DEFS={};for(const k in CARD_COUNTS)CARD_DEFS[k]={n:CARD_COUNTS[k],...T.cards[k]};
+const EXP_CARDS={tea2:2,tea8:2,diceGift:2,swap3:2,six:2,corner:2,dWain:2,dCH:2}; // guild-card draw card arrives with stage 2
+Object.assign(CARD_COUNTS,EXP_CARDS);
+const CARD_DEFS={};for(const k in CARD_COUNTS)if(T.cards[k])CARD_DEFS[k]={n:CARD_COUNTS[k],...T.cards[k]};
 const COLORS=['red','green','yellow','teal','white'];
 const AI_NAMES=T.aiNames;
 const STORE='istanbul-table-v1';
+const PREVIEW=(()=>{const q=new URLSearchParams(location.search);try{if(q.has('preview'))localStorage.setItem('istanbul-preview','1');if(q.get('preview')==='off')localStorage.removeItem('istanbul-preview');return !!localStorage.getItem('istanbul-preview');}catch(e){return q.has('preview');}})();
 const ABORT={abort:true};
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let G=null, GEN=0;
@@ -35,8 +41,9 @@ const roll2=()=>[1+rnd(6),1+rnd(6)];
 const rollSum=()=>{const d=roll2();return d[0]+d[1];};
 const cap=p=>2+p.ext;
 const cur=g=>g.players[g.current];
-const winTarget=g=>g.players.length===2?6:5;
-function rc(g,pl){const i=g.layout.indexOf(pl);return[i>>2,i&3];}
+const winTarget=g=>g.x?6:(g.players.length===2?6:5);
+const COLS=g=>g.cols||4;
+function rc(g,pl){const C=COLS(g);const i=g.layout.indexOf(pl);return[Math.floor(i/C),i%C];}
 function dist(g,a,b){const[x1,y1]=rc(g,a),[x2,y2]=rc(g,b);return Math.abs(x1-x2)+Math.abs(y1-y2);}
 const sultanReq=g=>SULTAN_SEQ.slice(0,4+g.sultanTaken);
 const gemPrice=g=>12+g.gemTaken;
@@ -61,11 +68,20 @@ const NS=k=>W[k+'Name']||('the '+W[k]);
 const NSC=k=>{const v=NS(k);return v[0].toUpperCase()+v.slice(1);};
 const NT=k=>W[k+'Title']||('The '+W[k]);
 const L=n=>`${n} ${W.cur}`;
+const TEA=n=>`${n} ${W.coffee}`;
+const chCost=g=>6+g.chTaken;
+const teaIc=()=>{const ic=ICON('coffee');return ic?`<img class="gi" src="${ic}" alt="${W.coffee}">`:'<span class="gd g-cof"></span>';};
 const plural=(n,one,many)=>n===1?one:many;
 function checkGen(ctx){if(!ctx.sim&&ctx.gen!==GEN)throw ABORT;}
 async function sleep(ctx,ms){if(ctx.sim)return;await new Promise(r=>setTimeout(r,ms));checkGen(ctx);}
-function reachable(g,p,mode){if(mode==='stay')return[p.pos];const ds=mode==='move34'?[3,4]:[1,2];return g.layout.filter(pl=>pl!==p.pos&&ds.includes(dist(g,p.pos,pl)));}
-function randomLayout(){for(;;){const L2=shuffle([...Array(16)].map((_,i)=>i+1));if(![5,6,9,10].includes(L2.indexOf(7)))continue;if(dist({layout:L2},8,9)<3)continue;return L2;}}
+function cornerPlaces(g){const C=COLS(g),R=g.layout.length/C;return[0,C-1,(R-1)*C,R*C-1].map(i=>g.layout[i]);}
+function reachable(g,p,mode){if(mode==='stay')return[p.pos];if(mode==='corner')return cornerPlaces(g).filter(pl=>pl!==p.pos);const ds=mode==='move34'?[3,4]:[1,2];return g.layout.filter(pl=>pl!==p.pos&&ds.includes(dist(g,p.pos,pl)));}
+function randomLayout(x){
+  if(!x){for(;;){const L2=shuffle([...Array(16)].map((_,i)=>i+1));if(![5,6,9,10].includes(L2.indexOf(7)))continue;if(dist({layout:L2},8,9)<3)continue;return L2;}}
+  for(;;){const L2=shuffle([...Array(20)].map((_,i)=>i+1));const g={layout:L2,cols:5};
+    if(![6,7,8,11,12,13].includes(L2.indexOf(7)))continue;
+    const[a,b]=rc(g,8),[c,d]=rc(g,9);if(a===c||b===d||dist(g,8,9)<3)continue;return L2;}
+}
 let toastT=null;
 function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2600);}
 function log(ctx,msg,p,sep){if(ctx.sim)return;ctx.G.log.unshift({t:msg,c:p?p.color:null,s:!!sep});if(ctx.G.log.length>160)ctx.G.log.pop();render();}
@@ -78,13 +94,15 @@ function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
 /* ---------- setup ---------- */
 function newGame(cfg){
   const n=cfg.players.length;
-  const layout=cfg.layout==='random'?randomLayout():LAYOUTS[cfg.layout].slice();
-  const players=cfg.players.map((pl,i)=>({i,name:cleanName(pl.name)||('Player '+(i+1)),ai:!!pl.ai,owner:pl.owner||(pl.ai?'ai':''),color:COLORS[i],lira:0,goods:{r:0,g:0,y:0,b:0},ext:0,rubies:0,tiles:{r:0,g:0,y:0,b:0},stack:4,assist:{},pos:7,family:12,cards:[],yellowUsed:false}));
-  const deck=[];Object.entries(CARD_DEFS).forEach(([k,d])=>{for(let i=0;i<d.n;i++)deck.push(k);});shuffle(deck);
+  const x=!!cfg.exp;
+  const layout=cfg.layout==='random'?randomLayout(x):(x?LAYOUTS20:LAYOUTS)[cfg.layout].slice();
+  const players=cfg.players.map((pl,i)=>({i,name:cleanName(pl.name)||('Player '+(i+1)),ai:!!pl.ai,owner:pl.owner||(pl.ai?'ai':''),color:COLORS[i],lira:0,coffee:0,goods:{r:0,g:0,y:0,b:0},ext:0,rubies:0,tiles:{r:0,g:0,y:0,b:0},stack:4,assist:{},pos:7,family:12,cards:[],yellowUsed:false}));
+  const deck=[];Object.entries(CARD_DEFS).forEach(([k,d])=>{if(EXP_CARDS[k]&&!x)return;for(let i=0;i<d.n;i++)deck.push(k);});shuffle(deck);
   const start=rnd(n);
   for(let k=0;k<n;k++){const p=players[(start+k)%n];p.lira=2+k;p.cards.push(deck.pop());}
   const reqs=n===2?[2,4]:n===3?[2,3,4]:[2,3,4,5];
-  const g={id:Math.random().toString(36).slice(2,10),players,layout,deck,discard:[],post:0,
+  const g={id:Math.random().toString(36).slice(2,10),x,cols:x?5:4,players,layout,deck,discard:[],post:0,
+    trader:x?rollSum():null,chTaken:0,chRubies:4,
     neutrals:n===2?[{color:'grey',pos:14},{color:'grey',pos:15},{color:'grey',pos:16}]:[],
     gov:rollSum(),smug:rollSum(),
     small:shuffle(SMALL_TILES.map(t=>t.slice())),large:shuffle(LARGE_TILES.map(t=>t.slice())),
@@ -148,6 +166,13 @@ async function resolveMove(ctx,target,mode){
       g.smug=rollSum();log(ctx,`${p.name} deals with ${NS('smug')}, who moves to the ${PNAME[g.smug]}.`,p);
     }
   }
+  if(g.x&&g.trader===target&&(p.lira>=2||totalGoods(p)>0)){
+    if(await decide(ctx,p,'confirm',{key:'trader',title:NT('trader'),text:`Take 1 ${W.coffeeLong} for ${L(2)} or 1 good?`,yes:`Take 1 ${W.coffee}`,no:'Ignore'})){
+      const pay=await decide(ctx,p,'smugPay',{who:'trader'});
+      if(pay==='lira')p.lira-=2;else p.goods[pay]--;
+      p.coffee++;g.trader=rollSum();log(ctx,`${p.name} buys ${W.coffee} from ${NS('trader')}, who moves to the ${PNAME[g.trader]}.`,p);
+    }
+  }
 }
 
 function setRoll(ctx,p,d,purpose,target,note2){if(ctx.sim)return;const g=ctx.G;g.lastRoll={n:(g.lastRoll?g.lastRoll.n:0)+1,d:[d[0],d[1]],who:p.i,purpose,target:target??null,note:note2||''};}
@@ -160,6 +185,9 @@ async function rollWithRed(ctx,p,purpose,target){
     const ch=await decide(ctx,p,'dice',{dice:d,purpose,target});
     if(ch==='four'){const i=d[0]<=d[1]?0:1;d[i]=4;setRoll(ctx,p,d,purpose,target,'Turned a die to 4');log(ctx,`${p.name} turns a die to 4: ${d[0]+d[1]}.`,p);await sleep(ctx,900);}
     else if(ch==='reroll'){d=roll2();setRoll(ctx,p,d,purpose,target,'Re-roll');log(ctx,`${p.name} re-rolls: ${d[0]} + ${d[1]} = ${d[0]+d[1]}.`,p);await sleep(ctx,1100);}
+  }
+  if(hasCard(p,'six')&&Math.min(d[0],d[1])<6&&await decide(ctx,p,'six',{dice:d,purpose,target})){
+    useCard(ctx.G,p,'six');const i=d[0]<=d[1]?0:1;d[i]=6;setRoll(ctx,p,d,purpose,target,`${CARD_DEFS.six.name}: a die turned to 6`);log(ctx,`${p.name} plays “${CARD_DEFS.six.name}”: ${d[0]+d[1]}.`,p);await sleep(ctx,900);
   }
   return d;
 }
@@ -180,6 +208,9 @@ async function doAction(ctx,p,place){
     if(!await decide(ctx,p,'confirm',{key:'wain',title:PNAME[1],text:`Pay ${L(7)} to extend your ${W.cart} to ${cap(p)+1} of each good?${p.ext===2?` This completes it and earns a ${W.ruby}.`:''}`,yes:`Pay ${L(7)}`}))break;
     p.lira-=7;p.ext++;log(ctx,`${p.name} extends the ${W.cart} (${cap(p)} per good).`,p);
     if(p.ext===3&&g.wainRubies>0){g.wainRubies--;gainRuby(ctx,p,PNAME[1]);}
+    if(p.ext<3&&p.lira>=7&&hasCard(p,'dWain')&&await decide(ctx,p,'confirm',{key:'dWain',title:CARD_DEFS.dWain.name,text:`Play your ${W.card} to pay ${L(7)} for another extension?`,yes:'Play card'})){
+      useCard(g,p,'dWain');p.lira-=7;p.ext++;log(ctx,`${p.name} extends the ${W.cart} again (${cap(p)} per good).`,p);
+      if(p.ext===3&&g.wainRubies>0){g.wainRubies--;gainRuby(ctx,p,PNAME[1]);}}
     break;}
   case 2:case 3:case 4:{
     const c={2:'r',3:'g',4:'y'}[place];const n=cap(p)-p.goods[c];p.goods[c]=cap(p);
@@ -195,7 +226,7 @@ async function doAction(ctx,p,place){
   case 6:{
     for(let k=1;k<=2;k++){let src='deck';if(g.discard.length)src=await decide(ctx,p,'cardSource',{top:g.discard[g.discard.length-1],n:k});
       const c=drawCard(g,src==='discard');if(c)p.cards.push(c);}
-    log(ctx,`${p.name} takes 2 ${W.cards}.`,p);
+    log(ctx,`${p.name} takes 2 ${W.cards}${g.x?` and 1 ${W.coffee}`:''}.`,p);if(g.x)p.coffee++;
     if(p.cards.length){const i=await decide(ctx,p,'discardCard',{title:`${PNAME[6]}: discard 1`});const [c]=p.cards.splice(i,1);g.discard.push(c);log(ctx,`${p.name} discards “${CARD_DEFS[c].name}”.`,p);}
     break;}
   case 7:{
@@ -263,7 +294,57 @@ async function doAction(ctx,p,place){
       p.lira-=price;g.gemTaken++;gainRuby(ctx,p,PNAME[16]);times++;
     }
     break;}
+  case 17:{
+    const used={};let got=0;
+    for(let k=0;k<3;k++){
+      const opts=[];
+      if(!used.lira&&p.lira>=2)opts.push('lira');
+      if(!used.good&&totalGoods(p)>0)opts.push('good');
+      if(!used.card&&p.cards.length)opts.push('card');
+      if(!opts.length)break;
+      const ch=await decide(ctx,p,'roast',{opts,got});
+      if(!ch)break;used[ch]=1;
+      if(ch==='lira')p.lira-=2;
+      else if(ch==='good'){const c=await decide(ctx,p,'pickGood',{key:'roastPay',title:PNAME[17],text:'Pay 1 good.',options:GOODS.filter(c=>p.goods[c]>0)});p.goods[c]--;}
+      else{const i=await decide(ctx,p,'discardCard',{title:`${PNAME[17]}: give up a ${W.card}`});const[c]=p.cards.splice(i,1);g.discard.push(c);}
+      p.coffee+=2;got+=2;
+    }
+    log(ctx,got?`${p.name} roasts ${TEA(got)}.`:`${p.name} roasts nothing.`,p);
+    break;}
+  case 18:{
+    p.coffee++;log(ctx,`${p.name} takes 1 ${W.coffee} at the ${PNAME[18]}.`,p);break;}
+  case 19:{
+    note(ctx,p,`The ${PNAME[19]} opens in a later update.`);break;}
+  case 20:{
+    let times=0;
+    for(;;){
+      if(g.chTaken>=g.chRubies){if(!times)note(ctx,p,`The ${PNAME[20]} has no ${W.rubies} left.`);break;}
+      const cost=chCost(g);
+      if(p.coffee<cost){if(!times)note(ctx,p,`A ${W.ruby} costs ${TEA(cost)} here.`);break;}
+      if(times===0){if(!await decide(ctx,p,'confirm',{key:'ch',title:PNAME[20],text:`Deliver ${TEA(cost)} for a ${W.ruby}?`,yes:`Deliver ${TEA(cost)}`}))break;}
+      else{if(!hasCard(p,'dCH')||!await decide(ctx,p,'confirm',{key:'dCH',title:CARD_DEFS.dCH.name,text:`Play your ${W.card} to deliver ${TEA(cost)} for another ${W.ruby}?`,yes:'Play card'}))break;useCard(g,p,'dCH');}
+      p.coffee-=cost;g.chTaken++;gainRuby(ctx,p,PNAME[20]);times++;
+    }
+    break;}
   }
+}
+/* expansion bonus cards that are played on your turn (shared by players and the AI) */
+async function playExpCard(ctx,p,t){
+  const g=ctx.G;
+  if(t==='tea2'){useCard(g,p,t);p.coffee+=2;log(ctx,`${p.name} plays “${CARD_DEFS[t].name}” for ${TEA(2)}.`,p);return true;}
+  if(t==='tea8'){if(p.coffee<1)return false;useCard(g,p,t);p.coffee--;p.lira+=8;log(ctx,`${p.name} plays “${CARD_DEFS[t].name}”: 1 ${W.coffee} for ${L(8)}.`,p);return true;}
+  if(t==='diceGift'){useCard(g,p,t);const d=roll2();setRoll(ctx,p,d,'gift',null);const got=[];
+    d.forEach(v=>{const r=DICE_GIFT[v];if(r==='lira'){p.lira+=2;got.push(L(2));}else if(r==='coffee'){p.coffee++;got.push(`1 ${W.coffee}`);}else if(p.goods[r]<cap(p)){p.goods[r]++;got.push(GNAME[r]);}});
+    log(ctx,`${p.name} plays “${CARD_DEFS[t].name}”, rolls ${d[0]} and ${d[1]}: ${got.join(', ')||'nothing fits'}.`,p);return true;}
+  if(t==='swap3'){
+    let n=0;const kinds=[...GOODS,'coffee'];const has=k=>k==='coffee'?p.coffee>0:p.goods[k]>0;const room=k=>k==='coffee'||p.goods[k]<cap(p);
+    while(n<3){
+      const give=await decide(ctx,p,'swapGive',{options:kinds.filter(has),n});if(!give)break;
+      const take=await decide(ctx,p,'swapTake',{options:kinds.filter(k=>k!==give&&room(k)),give});if(!take)break;
+      if(give==='coffee')p.coffee--;else p.goods[give]--;if(take==='coffee')p.coffee++;else p.goods[take]++;n++;
+    }
+    if(!n)return false;useCard(g,p,t);log(ctx,`${p.name} plays “${CARD_DEFS[t].name}” and exchanges ${n}.`,p);return true;}
+  return false;
 }
 
 /* ---------- decisions ---------- */
@@ -280,7 +361,7 @@ function need(g,p){
 }
 const bestGood=(g,p,opts)=>{const s=need(g,p);return opts.slice().sort((a,b)=>s[b]-s[a]||p.goods[a]-p.goods[b])[0];};
 const spareGood=(g,p,opts)=>{const s=need(g,p);return opts.slice().sort((a,b)=>(p.goods[b]-p.goods[a])||(s[a]-s[b]))[0];};
-const CARD_VAL={lira5:9,good:8,family:6,move34:5,dGem:4,dSultan:4,recall:4,dPost:4,smAny:3,stay:2};
+const CARD_VAL={lira5:9,good:8,family:6,move34:5,dGem:4,dSultan:4,recall:4,dPost:4,smAny:3,stay:2,tea2:6,tea8:6,diceGift:6,swap3:2,six:3,corner:4,dWain:3,dCH:4};
 const worstCard=p=>{let bi=0;p.cards.forEach((c,i)=>{if(CARD_VAL[c]<CARD_VAL[p.cards[bi]])bi=i;});return bi;};
 
 async function aiDecide(ctx,p,kind,d){
@@ -289,6 +370,7 @@ async function aiDecide(ctx,p,kind,d){
   case 'confirm':
     if(d.key==='gov')return p.lira>=5||p.cards.length>=1;
     if(d.key==='smug')return p.lira>=5||totalGoods(p)>=3;
+    if(d.key==='trader')return g.chTaken<g.chRubies&&(p.lira>=5||totalGoods(p)>=4);
     return true;
   case 'pickGood':
     if(d.key==='green'&&p.lira<4)return null;
@@ -314,6 +396,16 @@ async function aiDecide(ctx,p,kind,d){
     return best;}
   case 'familyReward':return 'lira';
   case 'govPay':return p.lira>=4?'lira':worstCard(p);
+  case 'roast':{
+    if(g.chTaken>=g.chRubies)return null;
+    if(d.opts.includes('card')&&p.cards.length&&CARD_VAL[p.cards[worstCard(p)]]<=4)return 'card';
+    if(d.opts.includes('lira')&&p.lira>=5)return 'lira';
+    if(d.opts.includes('good')&&totalGoods(p)>=4)return 'good';
+    return d.got?null:(d.opts.includes('lira')?'lira':d.opts[0]);}
+  case 'six':{const s=d.dice[0]+d.dice[1],lo=Math.min(...d.dice),six=s-lo+6;
+    if(d.purpose==='tea')return s<d.target&&six>=d.target;
+    const br=x=>x>=11?3:x>=9?2:x>=7?1:0;return br(six)>br(s);}
+  case 'swapGive':case 'swapTake':return null;
   case 'smugPay':{if(p.lira>=6)return 'lira';const opts=GOODS.filter(c=>p.goods[c]>0);if(!opts.length)return 'lira';return spareGood(g,p,opts);}
   }
 }
@@ -331,6 +423,7 @@ function evalPlayer(g,p){
   if(g.gemTaken<g.gemRubies){const f=Math.min(1,p.lira/gemPrice(g));v+=10*f*f;}
   [14,15].forEach(pl=>MOSQUE[pl].forEach(c=>{if(!p.tiles[c]&&g.mosque[c].length){const f=Math.min(1,p.goods[c]/g.mosque[c][0]);v+=6*f*f;}}));
   if(p.ext<3)v+=Math.min(1,p.lira/7)*4;
+  if(g.x){if(g.chTaken<g.chRubies){const f=Math.min(1,p.coffee/chCost(g));v+=Math.min(p.coffee,chCost(g))*2+22*f*f;}else v+=p.coffee;}
   return v;
 }
 
@@ -350,13 +443,19 @@ async function aiTurn(ctx){
   while(hasCard(p,'lira5')){useCard(g,p,'lira5');p.lira+=5;log(ctx,`${p.name} plays “${CARD_DEFS.lira5.name}”.`,p);}
   if(hasCard(p,'family')&&p.family!==12){useCard(g,p,'family');p.family=12;p.lira+=3;log(ctx,`${p.name} calls the ${W.family} home and takes ${L(3)}.`,p);}
   if(hasCard(p,'good')){const room=GOODS.filter(c=>p.goods[c]<cap(p));if(room.length){const c=bestGood(g,p,room);if(need(g,p)[c]>0){useCard(g,p,'good');p.goods[c]++;log(ctx,`${p.name} plays “${CARD_DEFS.good.name}” for ${GNAME[c]}.`,p);}}}
+  if(g.x){
+    while(hasCard(p,'tea2'))await playExpCard(ctx,p,'tea2');
+    if(hasCard(p,'diceGift'))await playExpCard(ctx,p,'diceGift');
+    if(hasCard(p,'tea8')&&p.coffee>0&&(g.chTaken>=g.chRubies||p.coffee>chCost(g)||p.coffee<2))await playExpCard(ctx,p,'tea8');
+  }
   const out=Object.keys(p.assist).map(Number);
   if(p.stack===0&&out.length){
     const far=out.sort((a,b)=>dist(g,p.pos,b)-dist(g,p.pos,a))[0];
     if(p.tiles.y&&p.lira>=2&&!p.yellowUsed){p.lira-=2;p.yellowUsed=true;recallFrom(p,far);log(ctx,`${p.name} pays ${L(2)} to bring an ${W.assistant} home.`,p);}
     else if(hasCard(p,'recall')){useCard(g,p,'recall');recallFrom(p,far);log(ctx,`${p.name} plays “${CARD_DEFS.recall.name}”.`,p);}
   }
-  const best=(await rankMoves(g,p,hasCard(p,'move34')?['normal','move34']:['normal']))[0];
+  const modes=['normal'];if(hasCard(p,'move34'))modes.push('move34');if(hasCard(p,'corner'))modes.push('corner');
+  const best=(await rankMoves(g,p,modes))[0];
   checkGen(ctx);
   if(best.mode!=='normal'){useCard(g,p,best.mode);log(ctx,`${p.name} plays “${CARD_DEFS[best.mode].name}”.`,p);}
   UI.sel=best.t;render();await sleep(ctx,550);
@@ -415,7 +514,15 @@ async function humanDecide(ctx,p,kind,d){
   case 'policeTarget':return sheet(PNAME[12],`<p>Send your ${W.family} to any place and take that action there. No ${W.assistant} needed and no encounters.</p>`,[...d.options.map(pl=>({label:PNAME[pl],value:pl})),{label:'Skip',value:null}],{grid:true});
   case 'familyReward':return sheet(`${W.family[0].toUpperCase()+W.family.slice(1)} caught`,`<p>You sent ${d.name}'s ${W.family} to the ${PNAME[12]}. Choose your reward.</p>`,[{label:`Take ${L(3)}`,value:'lira',primary:true},{label:`Draw a ${W.card}`,value:'card'}]);
   case 'govPay':return sheet(`Pay ${NS('gov')}`,`<p>Pay ${L(2)} or discard a ${W.card}.</p>`,[...(p.lira>=2?[{label:`Pay ${L(2)}`,value:'lira',primary:true}]:[]),...p.cards.map((c,i)=>({label:'Discard “'+CARD_DEFS[c].name+'”',value:i}))]);
-  case 'smugPay':return sheet(`Pay ${NS('smug')}`,`<p>Pay ${L(2)} or 1 good.</p>`,[...(p.lira>=2?[{label:`Pay ${L(2)}`,value:'lira',primary:true}]:[]),...GOODS.filter(c=>p.goods[c]>0).map(c=>({label:`Pay 1 ${chip(c)} ${GNAME[c]}`,value:c}))]);
+  case 'roast':{const lab={lira:`Pay ${L(2)}`,good:'Pay 1 good',card:`Give up a ${W.card}`};
+    return sheet(PNAME[17],`<p>${d.got?`You have roasted ${TEA(d.got)} so far. `:''}Each choice, once per visit, gives ${TEA(2)}.</p>`,[...d.opts.map((o,i)=>({label:`${lab[o]} ${teaIc()}+2`,value:o,primary:i===0})),{label:d.got?'Done':'Skip',value:null}]);}
+  case 'six':{const[a,b]=d.dice,lo=Math.min(a,b);return sheet(CARD_DEFS.six.name,`<div class="dice">${dieFace(a)}${dieFace(b)}</div><p>Play your ${W.card} to turn the ${lo} into a 6 (total ${a+b-lo+6})?</p>`,[{label:'Play card',value:true,primary:true},{label:'Keep the roll',value:false}]);}
+  case 'swapGive':{const nm=k=>k==='coffee'?`${teaIc()} ${W.coffee} <small>${p.coffee}</small>`:`${chip(k)} ${GNAME[k]} <small>${p.goods[k]}/${cap(p)}</small>`;
+    return sheet(CARD_DEFS.swap3.name,`<p>Exchange ${d.n+1} of up to 3: what do you give?</p>`,[...d.options.map(k=>({label:nm(k),value:k})),{label:d.n?'Done':'Cancel',value:null}]);}
+  case 'swapTake':{const nm=k=>k==='coffee'?`${teaIc()} ${W.coffee}`:`${chip(k)} ${GNAME[k]} <small>${p.goods[k]}/${cap(p)}</small>`;
+    return sheet(CARD_DEFS.swap3.name,`<p>And what do you take for it?</p>`,[...d.options.map(k=>({label:nm(k),value:k})),{label:'Cancel',value:null}]);}
+  case 'smugPay':if(d.who==='trader')return sheet(`Pay ${NS('trader')}`,`<p>Pay ${L(2)} or 1 good for 1 ${W.coffeeLong}.</p>`,[...(p.lira>=2?[{label:`Pay ${L(2)}`,value:'lira',primary:true}]:[]),...GOODS.filter(c=>p.goods[c]>0).map(c=>({label:`Pay 1 ${chip(c)} ${GNAME[c]}`,value:c}))]);
+    return sheet(`Pay ${NS('smug')}`,`<p>Pay ${L(2)} or 1 good.</p>`,[...(p.lira>=2?[{label:`Pay ${L(2)}`,value:'lira',primary:true}]:[]),...GOODS.filter(c=>p.goods[c]>0).map(c=>({label:`Pay 1 ${chip(c)} ${GNAME[c]}`,value:c}))]);
   }
 }
 
@@ -433,7 +540,11 @@ async function cardTap(pi,i){
   if(t==='family'){playable=canAct&&p.family!==12;if(p.family===12)hint=`Your ${W.family} is already at the ${PNAME[12]}.`;}
   if(t==='stay'||t==='move34'){playable=moving;label=UI.mode===t?'Cancel':'Use for this move';if(!moving)hint='Only before you move.';}
   if(t==='recall'){playable=moving&&Object.keys(p.assist).length>0;if(!moving)hint='Only before you move.';else if(!playable)hint=`All your ${W.assistants} are already with you.`;}
-  if(['dSultan','dPost','dGem','smAny'].includes(t))hint='You will be offered this card during that action.';
+  if(['dSultan','dPost','dGem','smAny','six','dWain','dCH'].includes(t))hint=t==='six'?'You will be offered this card when you roll the dice.':'You will be offered this card during that action.';
+  if(t==='tea2'||t==='diceGift')playable=canAct;
+  if(t==='tea8'){playable=canAct&&p.coffee>0;if(canAct&&!p.coffee)hint=`You need 1 ${W.coffee}.`;}
+  if(t==='swap3'){playable=canAct&&(totalGoods(p)+p.coffee)>0;}
+  if(t==='corner'){playable=moving;label=UI.mode===t?'Cancel':'Use for this move';if(!moving)hint='Only before you move.';}
   UI.busy=true;
   try{
     const ok=await sheet(def.name,`<p>${def.text}</p>${hint?`<p class="muted">${hint}</p>`:''}`,playable?[{label,value:true,primary:true},{label:'Close',value:false}]:[{label:'Close',value:false}]);
@@ -443,7 +554,8 @@ async function cardTap(pi,i){
     else if(t==='good'){const room=GOODS.filter(c=>p.goods[c]<cap(p));if(!room.length){toast(`Your ${W.cart} is full.`);return;}
       const c=await humanDecide(ctx,p,'pickGood',{title:def.name,text:'Choose a good.',options:room,allowSkip:true});if(c){useCard(G,p,t);p.goods[c]++;log(ctx,`${p.name} plays “${def.name}” for ${GNAME[c]}.`,p);}}
     else if(t==='family'){useCard(G,p,t);p.family=12;const r=await humanDecide(ctx,p,'familyReward',{name:'your own'});if(r==='card'){const c=drawCard(G);if(c)p.cards.push(c);}else p.lira+=3;log(ctx,`${p.name} calls the ${W.family} home.`,p);}
-    else if(t==='stay'||t==='move34'){UI.mode=UI.mode===t?'normal':t;UI.sel=null;UI.sugg=null;}
+    else if(['tea2','tea8','diceGift','swap3'].includes(t)){await playExpCard(ctx,p,t);}
+    else if(t==='stay'||t==='move34'||t==='corner'){UI.mode=UI.mode===t?'normal':t;UI.sel=null;UI.sugg=null;}
     else if(t==='recall'){const pl=await pickAssistant(p);if(pl!=null){useCard(G,p,t);recallFrom(p,pl);log(ctx,`${p.name} plays “${def.name}”.`,p);}}
   }finally{UI.busy=false;render();}
 }
@@ -523,7 +635,7 @@ function renderSoundBtn(){const b=$('#soundBtn');b.setAttribute('aria-pressed',S
 /* ---------- board-game effects: sliding tokens, gain pop-ups, dice, ruby flourish ---------- */
 const FX={prev:null,quiet:false,rollSeen:null};
 const FACE={}; // standees face the way they last walked
-function fxSnap(){return{id:G.id,cur:G.current,over:G.over,roll:G.lastRoll?G.lastRoll.n:0,players:G.players.map(p=>({pos:p.pos,lira:p.lira,goods:{...p.goods},rubies:p.rubies,cards:p.cards.length,ext:p.ext,tiles:GOODS.reduce((s,c)=>s+p.tiles[c],0)}))};}
+function fxSnap(){return{id:G.id,cur:G.current,over:G.over,roll:G.lastRoll?G.lastRoll.n:0,players:G.players.map(p=>({pos:p.pos,lira:p.lira,coffee:p.coffee||0,goods:{...p.goods},rubies:p.rubies,cards:p.cards.length,ext:p.ext,tiles:GOODS.reduce((s,c)=>s+p.tiles[c],0)}))};}
 function tokenRects(){const b=$('#board');if(!b)return{};const br=b.getBoundingClientRect();const o={};b.querySelectorAll('[data-k]').forEach(el=>{const r=el.getBoundingClientRect();o[el.dataset.k]={x:r.left-br.left,y:r.top-br.top};});return o;}
 function runFx(before){
   const prev=FX.prev,now=fxSnap();FX.prev=now;
@@ -549,6 +661,7 @@ function runFx(before){
       const q=prev.players[i],bits=[];
       const dl=p.lira-q.lira;if(dl)bits.push(`<span class="${dl>0?'up':'down'}">${dl>0?'+':'−'}${Math.abs(dl)} ${CS()}</span>`);
       GOODS.forEach(c=>{const d=p.goods[c]-q.goods[c];if(d)bits.push(`<span class="${d>0?'up':'down'}">${d>0?'+':'−'}${Math.abs(d)}${chip(c)}</span>`);});
+      const dt=p.coffee-q.coffee;if(dt)bits.push(`<span class="${dt>0?'up':'down'}">${dt>0?'+':'−'}${Math.abs(dt)}${teaIc()}</span>`);
       const dc=p.cards-q.cards;if(dc>0)bits.push(`<span class="up">+${dc} ${CD()||plural(dc,'card','cards')}</span>`);
       if(p.ext>q.ext)bits.push(`<span class="up">${W.cart} +1</span>`);
       if(p.tiles>q.tiles)bits.push(`<span class="up">+1 tile</span>`);
@@ -568,7 +681,7 @@ function runFx(before){
 const WALK={};
 const STEP_MS=360;
 function gridPath(a,z){
-  const at=pl=>rc(G,pl),pos=(r,c)=>G.layout[r*4+c];
+  const at=pl=>rc(G,pl),pos=(r,c)=>G.layout[r*COLS(G)+c];
   let [r,c]=at(a);const [r2,c2]=at(z);const out=[a];
   while(r!==r2){r+=Math.sign(r2-r);out.push(pos(r,c));}
   while(c!==c2){c+=Math.sign(c2-c);out.push(pos(r,c));}
@@ -618,7 +731,8 @@ function showDice(r){
   const p=G.players[r.who];const el=document.createElement('div');el.className='diceroll';diceEl=el;
   const s=r.d[0]+r.d[1];
   let res='';
-  if(r.purpose==='tea')res=s>=r.target?`Needed ${r.target}: takes ${L(r.target)}`:`Needed ${r.target}: takes ${L(2)}`;
+  if(r.purpose==='gift')res=r.d.map(v=>{const k=DICE_GIFT[v];return k==='lira'?`2${CS()}`:k==='coffee'?teaIc():chip(k);}).join(' ');
+  else if(r.purpose==='tea')res=s>=r.target?`Needed ${r.target}: takes ${L(r.target)}`:`Needed ${r.target}: takes ${L(2)}`;
   else{const blue=s>=11?3:s>=9?2:s>=7?1:0;res=blue?`+${blue} ${GNAME.b}`:`No ${GNAME.b}`;}
   el.innerHTML=`<div class="who"><i class="mer c-${p.color}"></i>${esc(p.name)}${r.note?` · ${r.note}`:''}</div><div class="dice">${dieFace(1)}${dieFace(1)}</div><div class="res"><b>${s}</b> <span>${res}</span></div>`;
   document.body.appendChild(el);
@@ -641,7 +755,7 @@ function hintFor(p,pl,mode){
   case 1:return p.ext>=3?H('Fully extended','meh'):p.lira>=7?H(p.ext===2?`◆ Extend`:'Extend cart',p.ext===2?'ruby':'good'):H(`Need ${7-p.lira}${CS()} more`,'meh');
   case 2:case 3:case 4:{const c={2:'r',3:'g',4:'y'}[pl];const n=cap(p)-p.goods[c];return n?H(`+${n} ${chip(c)}`,'good'):H('Already full','meh');}
   case 5:{let l=0,gd=0;postItems(g).forEach(it=>{if(it.l)l+=it.l;else if(p.goods[it.g]<cap(p))gd++;});return H(`+${l}${CS()} +${gd}${ICON('any')?chip('*'):' goods'}`,'good');}
-  case 6:return H(`+1 ${CD()||'card'}`,'good');
+  case 6:return H(`+1 ${CD()||'card'}${g.x?` +1${teaIc()}`:''}`,'good');
   case 7:{let n=0;for(const k in p.assist)n+=p.assist[k];return n?H(`${n} home`,'good'):H('Nothing out','meh');}
   case 8:return H('Good + roll','good');
   case 9:return H('Gamble','good');
@@ -653,6 +767,10 @@ function hintFor(p,pl,mode){
     const left=cols.filter(c=>!p.tiles[c]&&g.mosque[c].length);if(!left.length)return H('Done','meh');
     const c=left.sort((a,b)=>(g.mosque[a][0]-p.goods[a])-(g.mosque[b][0]-p.goods[b]))[0];return H(`Need ${g.mosque[c][0]} ${chip(c)}`,'meh');}
   case 16:{if(g.gemTaken>=g.gemRubies)return H('Sold out','meh');const pr=gemPrice(g);return p.lira>=pr?H(`◆ ${pr}${CS()}`,'ruby'):H(`Need ${pr-p.lira}${CS()} more`,'meh');}
+  case 17:{const n=(p.lira>=2?1:0)+(totalGoods(p)?1:0)+(p.cards.length?1:0);return n?H(`up to +${2*n}${teaIc()}`,'good'):H('Nothing to pay','meh');}
+  case 18:return H(`+1${teaIc()}`,'good');
+  case 19:return H('Opens later','meh');
+  case 20:{if(g.chTaken>=g.chRubies)return H('Sold out','meh');const c=chCost(g);return p.coffee>=c?H(`◆ ${c}${teaIc()}`,'ruby'):H(`Need ${c-p.coffee}${teaIc()} more`,'meh');}
   }
   return H('');
 }
@@ -662,23 +780,24 @@ function recapFor(p){
   return out.reverse().slice(-16);
 }
 function rulesSheet(){
-  const pl=Object.keys(T.places).map(Number).sort((a,b)=>a-b);
+  const X=!!(G&&G.x);
+  const pl=Object.keys(T.places).map(Number).filter(n=>n<=16||X).sort((a,b)=>a-b);
   sheet('How to play',`<div class="rules">
-    <p><b>Goal.</b> Be the first to collect ${winTarget(G||{players:[1,2,3]})===6?6:5} ${W.rubies} (6 with two players). The round then finishes so everyone has had the same number of turns. Ties go to the most ${W.cur}.</p>
+    <p><b>Goal.</b> Be the first to collect ${X?'6':'5'} ${W.rubies}${X?'':' (6 with two players)'}. The round then finishes so everyone has had the same number of turns. Ties go to the most ${W.cur}.</p>
     <h4>Your turn, in order</h4>
     <ol>
       <li><b>Move</b> your ${W.merchant} 1 or 2 places (no diagonals). You may first play ${W.cards} that say “before moving”.</li>
       <li><b>${W.assistants[0].toUpperCase()+W.assistants.slice(1)}.</b> Leave one ${W.assistant} at the place, or pick up the one waiting there. With no ${W.assistant} along, your turn ends. The ${PNAME[7]} needs none.</li>
       <li><b>Other ${W.merchants}.</b> Pay ${L(2)} to each other ${W.merchant} already there.</li>
       <li><b>Action.</b> Take the place's action (it's optional).</li>
-      <li><b>Encounters.</b> Catch another player's ${W.family} for a reward, and deal with ${NS('gov')} or ${NS('smug')} if they're here.</li>
-    </ol>
+      <li><b>Encounters.</b> Catch another player's ${W.family} for a reward, and deal with ${NS('gov')} or ${NS('smug')} if they're here.${X?` ${NSC('trader')} sells 1 ${W.coffeeLong} for ${L(2)} or 1 good.`:''}</li>
+    </ol>${X?`<p><b>${W.coffeeLong[0].toUpperCase()+W.coffeeLong.slice(1)}.</b> Brew it at the ${PNAME[17]}, buy it from ${NS('trader')}, and pick 1 up at the ${PNAME[6]}. Spend it at the ${PNAME[20]} for ${W.rubies}. The game ends at 6 ${W.rubies}.</p>`:''}
     <h4>Places</h4>
     <div class="rplaces">${pl.map(n=>`<div><b>${n}. ${PNAME[n]}</b><span>${PDESC[n]}</span></div>`).join('')}</div>
     <h4>${W.tiles[0].toUpperCase()+W.tiles.slice(1)}</h4>
     <div class="rplaces">${GOODS.map(c=>`<div><b>${chip(c)} ${GNAME[c]}</b><span>${TILE_ABIL[c]}</span></div>`).join('')}</div>
     <h4>${W.cards[0].toUpperCase()+W.cards.slice(1)}</h4>
-    <div class="rplaces">${Object.values(CARD_DEFS).map(d=>`<div><b>${d.name} ×${d.n}</b><span>${d.text}</span></div>`).join('')}</div>
+    <div class="rplaces">${Object.entries(CARD_DEFS).filter(([k])=>X||!EXP_CARDS[k]).map(([,d])=>`<div><b>${d.name} ×${d.n}</b><span>${d.text}</span></div>`).join('')}</div>
     <h4>Tips</h4>
     <p>Reachable places show a hint of what you'd get. ◆ marks a ${W.ruby} you can take right now. <b>Suggest</b> asks the AI for its pick, and <b>Undo</b> takes back a move as long as no dice were rolled and no cards were drawn.</p>
   </div>`,[{label:'Close',value:null,primary:true}],{wide:true});
@@ -690,7 +809,7 @@ function tileStatus(pl){
   case 1:return `<span class="ruby">◆${G.wainRubies}</span> 7${CS()}`;
   case 2:case 3:case 4:return `${chip({2:'r',3:'g',4:'y'}[pl])} fill up`;
   case 5:return postItems(G).map(it=>it.g?chip(it.g):`${it.l}${CS()}`).join(' ');
-  case 6:return `+2 −1 ${CD()||'cards'}`;
+  case 6:return `+2 −1 ${CD()||'cards'}${G.x?` +1${teaIc()}`:''}`;
   case 7:return `${W.assistants} home`;
   case 8:return 'good + dice';
   case 9:return 'bet 3–12';
@@ -700,6 +819,10 @@ function tileStatus(pl){
   case 13:{const left=G.sultanRubies-G.sultanTaken;return left?`<span class="ruby">◆${left}</span> ${sultanReq(G).length} goods`:'sold out';}
   case 14:case 15:return MOSQUE[pl].map(c=>`${chip(c)}${G.mosque[c].length?G.mosque[c][0]:'–'}`).join(' ')+` <span class="ruby">◆${G.mosqueRubies[pl]}</span>`;
   case 16:{const left=G.gemRubies-G.gemTaken;return left?`<span class="ruby">◆${left}</span> ${gemPrice(G)}${CS()}`:'sold out';}
+  case 17:return `→ 2${teaIc()} ×3`;
+  case 18:return `+1${teaIc()}`;
+  case 19:return 'soon';
+  case 20:{const left=G.chRubies-G.chTaken;return left?`<span class="ruby">◆${left}</span> ${chCost(G)}${teaIc()}`:'sold out';}
   }
 }
 function merchantToken(q,active){
@@ -717,6 +840,7 @@ function tokens(pl){
   G.players.forEach(q=>{if(q.family===pl)h+=`<i class="fam c-${q.color} ${coIc?'icon':''}" data-k="f${q.i}" title="${esc(q.name)}'s ${W.family}">${coIc?`<img src="${coIc}" alt="">`:''}</i>`;});
   if(G.gov===pl)h+=fig(A.gov,'npc c-gov','gov',NT('gov'),`<i class="gov" data-k="gov" title="${W.gov}"><b>${W.gov[0]}</b></i>`);
   if(G.smug===pl)h+=fig(A.smug,'npc c-smug','smug',NT('smug'),`<i class="smg" data-k="smug" title="${W.smug}"><b>${W.smug[0]}</b></i>`);
+  if(G.x&&G.trader===pl)h+=fig(A.trader,'npc c-trader','trader',NT('trader'),`<i class="trd" data-k="trader" title="${NT('trader')}"><b>${W.trader[0]}</b></i>`);
   return h;
 }
 function placeDetail(pl){
@@ -729,6 +853,7 @@ function placeDetail(pl){
   case 13:{const left=G.sultanRubies-G.sultanTaken;return `<div class="detail"><span><span class="k">Next delivery</span>${left?`<span class="chips">${sultanReq(G).map(chip).join('')}</span>`:'—'}</span><span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${left}</span></span></div>`;}
   case 14:case 15:return `<div class="detail">${MOSQUE[pl].map(c=>`<span><span class="k">${GNAME[c]} tile</span>${G.mosque[c].length?`needs ${G.mosque[c][0]} ${chip(c)}`:'gone'} <small class="muted">${TILE_ABIL[c]}</small></span>`).join('')}<span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${G.mosqueRubies[pl]}</span></span></div>`;
   case 16:{const left=G.gemRubies-G.gemTaken;return `<div class="detail"><span><span class="k">Price</span>${left?L(gemPrice(G)):'—'}</span><span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${left}</span></span></div>`;}
+  case 20:{const left=G.chRubies-G.chTaken;return `<div class="detail"><span><span class="k">Price</span>${left?TEA(chCost(G)):'—'}</span><span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${left}</span></span><span><span class="k">Your ${W.coffee}</span>${p.coffee}</span></div>`;}
   }
   return '';
 }
@@ -745,6 +870,7 @@ function preview(p,pl,mode){
   if(fams.length)out.push({t:`Catch ${fams.map(q=>esc(q.name)).join(', ')}'s ${W.family} for a reward.`,c:'good'});
   if(G.gov===pl)out.push({t:`${NSC('gov')} is here: draw a ${W.card} for ${L(2)} or a card.`});
   if(G.smug===pl)out.push({t:`${NSC('smug')} is here: take a good for ${L(2)} or a good.`});
+  if(G.x&&G.trader===pl)out.push({t:`${NSC('trader')} is here: buy 1 ${W.coffeeLong} for ${L(2)} or a good.`});
   return out;
 }
 function render(){
@@ -757,7 +883,7 @@ function render(){
   let msg='',acts='';
   if(G.over)msg='The game is over.';
   else if(UI.phase==='ai')msg=esc(G.log[0]&&!G.log[0].s?G.log[0].t:`${p.name} is thinking…`);
-  else if(UI.phase==='move'&&mineNow)msg=UI.mode==='stay'?'Stay put: tap your own place, then Stay here.':UI.mode==='move34'?'Long stride: tap a place 3 or 4 steps away.':'Tap a highlighted place, then Move here.';
+  else if(UI.phase==='move'&&mineNow)msg=UI.mode==='stay'?'Stay put: tap your own place, then Stay here.':UI.mode==='move34'?'Long stride: tap a place 3 or 4 steps away.':UI.mode==='corner'?`${CARD_DEFS.corner.name}: tap a corner place.`:'Tap a highlighted place, then Move here.';
   else if(UI.phase==='busy')msg=esc(G.log[0]&&!G.log[0].s?G.log[0].t:'Resolving your action…');
   else if(UI.phase==='post')msg='Play a card if you like, then end your turn.';
   else{const e=G.log.find(x=>!x.s);msg=esc(e?e.t:`Waiting for ${p.name}…`);}
@@ -778,9 +904,10 @@ function render(){
   // board
   const moving=UI.phase==='move'&&mineNow;
   const reach=new Set(moving?reachable(G,p,UI.mode):[]);
-  $('#board').innerHTML=G.layout.map(pl=>{
+  const bd=$('#board');bd.classList.toggle('x5',COLS(G)===5);
+  $('#board').innerHTML=G.layout.map((pl,ix)=>{const C=COLS(G),gr=Math.floor(ix/C)+1,gc=ix%C+1;
     const art=T.art.tiles&&T.art.tiles[pl];const h=reach.has(pl)?hintFor(p,pl,UI.mode):null;
-    return `<button class="tile k-${KIND[pl]} ${art?'art':''} ${reach.has(pl)?'reach':''} ${moving&&!reach.has(pl)?'dim':''} ${UI.sel===pl?'sel':''} ${UI.sugg===pl?'sugg':''}" data-pl="${pl}" aria-label="${PNAME[pl]}${h?': '+h.t.replace(/<[^>]+>/g,''):''}" ${art?`style="--art:url('${art}')"`:''}><span class="plate"><span class="pn">${pl}</span><span class="nm">${SHORT[pl]}</span><span class="st">${tileStatus(pl)}</span></span>${h&&h.t?`<span class="hint h-${h.k||'plain'}">${h.t}</span>`:''}${UI.sel===pl&&reach.has(pl)?`<span class="again">Tap again to ${UI.mode==='stay'?'stay':'move'}</span>`:''}<span class="tok n${Math.min(5,G.players.filter(q=>q.pos===pl&&T.art.merchants&&T.art.merchants[q.color]).length+(T.art.neutral?G.neutrals.filter(x=>x.pos===pl).length:0)+(T.art.gov&&G.gov===pl?1:0)+(T.art.smug&&G.smug===pl?1:0))}">${tokens(pl)}</span></button>`;}).join('');
+    return `<button class="tile k-${KIND[pl]} ${art?'art':''} ${reach.has(pl)?'reach':''} ${moving&&!reach.has(pl)?'dim':''} ${UI.sel===pl?'sel':''} ${UI.sugg===pl?'sugg':''}" data-pl="${pl}" aria-label="${PNAME[pl]}${h?': '+h.t.replace(/<[^>]+>/g,''):''}" style="--r:${gr};--c:${gc};${art?`--art:url('${art}')`:''}"><span class="plate"><span class="pn">${pl}</span><span class="nm">${SHORT[pl]}</span><span class="st">${tileStatus(pl)}</span></span>${h&&h.t?`<span class="hint h-${h.k||'plain'}">${h.t}</span>`:''}${UI.sel===pl&&reach.has(pl)?`<span class="again">Tap again to ${UI.mode==='stay'?'stay':'move'}</span>`:''}<span class="tok n${Math.min(5,G.players.filter(q=>q.pos===pl&&T.art.merchants&&T.art.merchants[q.color]).length+(T.art.neutral?G.neutrals.filter(x=>x.pos===pl).length:0)+(T.art.gov&&G.gov===pl?1:0)+(T.art.smug&&G.smug===pl?1:0)+(T.art.trader&&G.x&&G.trader===pl?1:0))}">${tokens(pl)}</span></button>`;}).join('');
   document.querySelectorAll('.tile').forEach(t=>t.onclick=()=>{const v=+t.dataset.pl;
     if(moving&&reach.has(v)&&UI.sel===v&&pendingMove){commitMove(v);return;}
     UI.sel=v;render();});
@@ -817,7 +944,7 @@ function render(){
     const port=T.art.merchants&&T.art.merchants[q.color];
     return `<div class="pl" data-pi="${q.i}"><div class="plh">${port?`<span class="portrait c-${q.color}" style="background-image:url('${port}')"></span>`:`<i class="mer c-${q.color}"></i>`}<span class="nm">${esc(q.name)}</span>${q.ai?'<span class="tag">AI</span>':''}${mine?'<span class="tag">You</span>':''}${away?'<span class="tag">Away</span>':''}${me?'<span class="tag turn">Turn</span>':''}
       <span class="rubies" aria-label="${q.rubies} ${W.rubies}">${[...Array(tgt)].map((_,i)=>`<span class="${i<q.rubies?'ruby':'off'}">◆</span>`).join('')}${q.rubies>tgt?`<span class="ruby">+${q.rubies-tgt}</span>`:''}</span></div>
-      <div class="stats"><span><b>${q.lira}</b> ${W.cur}</span><span><b>${q.stack}</b> ${plural(q.stack,W.assistant,W.assistants)} along${out?` <span class="muted">· out: ${out}</span>`:''}</span><span class="muted">${W.family[0].toUpperCase()+W.family.slice(1)}: ${SHORT[q.family]}</span>
+      <div class="stats"><span><b>${q.lira}</b> ${W.cur}</span>${G.x?`<span>${teaIc()} <b>${q.coffee}</b> ${W.coffee}</span>`:''}<span><b>${q.stack}</b> ${plural(q.stack,W.assistant,W.assistants)} along${out?` <span class="muted">· out: ${out}</span>`:''}</span><span class="muted">${W.family[0].toUpperCase()+W.family.slice(1)}: ${SHORT[q.family]}</span>
       <span class="tiles4" title="${W.tiles}">${GOODS.map(c=>`<span class="mt ${q.tiles[c]?'on g-'+c:''}" title="${GNAME[c]} tile"></span>`).join('')}</span></div>
       <div class="meters">${GOODS.map(c=>`<div class="meter"><span class="lbl">${chip(c)} ${GNAME[c]} ${q.goods[c]}</span><span class="pips">${[...Array(cap(q))].map((_,i)=>`<span class="pip ${i<q.goods[c]?'g-'+c:''}"></span>`).join('')}</span></div>`).join('')}</div>
       ${showHand?`<div class="hand">${q.cards.length?q.cards.map((c,i)=>`<button class="cardchip ${UI.mode===c?'armed':''}" data-card="${q.i}:${i}">${CARD_DEFS[c].name}</button>`).join(''):`<span class="muted">No ${W.cards}</span>`}</div>`:`<div class="stats muted">${q.cards.length} ${plural(q.cards.length,W.card,W.cards)}</div>`}
@@ -854,7 +981,7 @@ function renderStrip(){
       ${port?`<span class="portrait c-${q.color}" style="background-image:url('${port}')"></span>`:`<i class="mer c-${q.color}"></i>`}
       <span class="ms-name">${esc(q.name)}<small>${turn?'Your turn':'You'}</small></span></button>
     <span class="ms-stat ms-feath" title="${W.rubies}">${fe?`<img class="gi" src="${fe}" alt="">`:'<span class="ruby">◆</span>'}<b>${q.rubies}</b><small>/${winTarget(G)}</small></span>
-    <span class="ms-stat ms-coin" title="${W.cur}">${coinIc()||'<span class="coin">c</span>'}<b>${q.lira}</b></span>
+    <span class="ms-stat ms-coin" title="${W.cur}">${coinIc()||'<span class="coin">c</span>'}<b>${q.lira}</b></span>${G.x?`<span class="ms-stat ms-tea" title="${W.coffeeLong}">${teaIc()}<b>${q.coffee}</b></span>`:''}
     <span class="ms-goods">${GOODS.map(c=>`<span class="ms-g ${q.goods[c]>=cap(q)?'full':''} ${q.goods[c]===0?'zero':''}" title="${GNAME[c]} ${q.goods[c]} of ${cap(q)}">${chip(c)}<b>${q.goods[c]}</b><small>/${cap(q)}</small></span>`).join('')}</span>
     <span class="ms-stat ms-ap ${q.stack===0?'bad':''}" title="${W.assistants} with you">${ICON('apprentice')?`<img class="gi" src="${ICON('apprentice')}" alt="">`:`<i class="ast c-${q.color}"></i>`}<b>${q.stack}</b></span>
     <span class="ms-stat ms-cards" title="${W.cards}">${ICON('card')?`<img class="gi" src="${ICON('card')}" alt="">`:'<span class="mini-card"></span>'}<b>${q.cards.length}</b></span>`;
@@ -872,24 +999,27 @@ function showEnd(){
 function setupSheet(){
   const prev=(G&&G.cfg&&!ON.code)?G.cfg:{players:[{name:lsGet('istanbul-name')||'Player 1',ai:false},{name:AI_NAMES[1],ai:true},{name:AI_NAMES[2],ai:true}],layout:'short'};
   const names=[lsGet('istanbul-name')||'Player 1',...AI_NAMES.slice(1)];
-  const st={n:prev.players.length,players:names.map((n,i)=>prev.players[i]?{name:prev.players[i].name,ai:prev.players[i].ai}:{name:n,ai:true}),layout:prev.layout};
+  const st={n:prev.players.length,players:names.map((n,i)=>prev.players[i]?{name:prev.players[i].name,ai:prev.players[i].ai}:{name:n,ai:true}),layout:prev.layout,exp:!!prev.exp};
   const w=$('#sheetWrap'),s=$('#sheet');s.className='';
   const draw=()=>{
     s.innerHTML=`<h2>New game on this device</h2><div class="form">
       <div><h4>Players</h4><div class="seg" id="nseg">${[2,3,4,5].map(n=>`<button data-n="${n}" class="${st.n===n?'on':''}">${n}</button>`).join('')}</div></div>
       ${st.players.slice(0,st.n).map((pl,i)=>`<div class="prow"><i class="mer c-${COLORS[i]}"></i><input id="pname${i}" value="${esc(pl.name)}" aria-label="Player ${i+1} name" maxlength="16"><div class="seg">${['Human','AI'].map(k=>`<button data-p="${i}" data-ai="${k==='AI'?1:0}" class="${(pl.ai?'AI':'Human')===k?'on':''}">${k}</button>`).join('')}</div></div>`).join('')}
       <div><h4>Board layout</h4><select id="layoutSel"><option value="short" ${st.layout==='short'?'selected':''}>Short paths (learning)</option><option value="order" ${st.layout==='order'?'selected':''}>In order (similar places together)</option><option value="random" ${st.layout==='random'?'selected':''}>Random</option></select></div>
+      ${expToggle(st.exp)}
       <div class="sbtns"><button class="btn primary big" id="goBtn">Start game</button><button class="btn" id="cancelBtn">Cancel</button></div></div>`;
     const keep=()=>st.players.slice(0,st.n).forEach((pl,i)=>{const el=$('#pname'+i);if(el)pl.name=el.value.trim()||('Player '+(i+1));});
     s.querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>{keep();st.n=+b.dataset.n;draw();});
     s.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{keep();st.players[+b.dataset.p].ai=b.dataset.ai==='1';draw();});
     $('#layoutSel').onchange=e=>st.layout=e.target.value;
+    s.querySelectorAll('[data-exp]').forEach(b=>b.onclick=()=>{keep();st.exp=b.dataset.exp==='1';draw();});
     $('#cancelBtn').onclick=()=>{w.hidden=true;};
-    $('#goBtn').onclick=()=>{keep();w.hidden=true;startGame({players:st.players.slice(0,st.n).map(p=>({name:cleanName(p.name),ai:p.ai})),layout:st.layout});};
+    $('#goBtn').onclick=()=>{keep();w.hidden=true;startGame({players:st.players.slice(0,st.n).map(p=>({name:cleanName(p.name),ai:p.ai})),layout:st.layout,exp:PREVIEW&&st.exp});};
   };
   draw();w.hidden=false;
 }
 
+const expToggle=on=>PREVIEW?`<div><h4>Expansion <span class="tag">Preview</span></h4><div class="seg">${[['0','Base game'],['1',`+ ${W.coffeeLong}`]].map(([v,l])=>`<button data-exp="${v}" class="${(on?'1':'0')===v?'on':''}">${l}</button>`).join('')}</div><p class="muted small">Adds 4 places on a 5×4 board, ${W.coffeeLong}, ${NS('trader')} and 8 ${W.cards}. Games end at 6 ${W.rubies}.</p></div>`:'';
 /* ---------- shared helpers for screens ---------- */
 function rid(n){const a='abcdefghijkmnpqrstuvwxyz23456789';let s='';for(let i=0;i<n;i++)s+=a[Math.floor(Math.random()*a.length)];return s;}
 function rcode(){const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<5;i++)s+=a[Math.floor(Math.random()*a.length)];return s;}
@@ -1025,7 +1155,7 @@ function renderLobby(){
       if(mine>=0&&s.ai)act=`<button class="btn" data-open="${i}">Open for a friend</button>`;
       return `<div class="seat"><i class="mer c-${COLORS[i]}"></i><span class="nm">${s.owner==='-'?'Waiting for a friend':esc(s.name)}${s.owner===ME?' <span class="tag">You</span>':''}</span>${st}<span class="act">${act}</span></div>`;}).join('')}</div>
     <div class="row">${mine>=0?`<button class="btn primary big" id="startBtn" ${open?'disabled':''}>${open?`Waiting for ${open} more ${plural(open,'player','players')}`:'Start the game'}</button>`:''}</div>
-    <p class="muted small">Board: ${{short:'Short paths',order:'In order',random:'Random'}[d.layout]||esc(d.layout)}. Any seated player can start once every seat is filled.</p></div>`;
+    <p class="muted small">Board: ${{short:'Short paths',order:'In order',random:'Random'}[d.layout]||esc(d.layout)}${d.exp?` · with ${W.coffeeLong}`:''}. Any seated player can start once every seat is filled.</p></div>`;
   $('#copyBtn').onclick=()=>copyText(link);
   document.querySelectorAll('[data-take]').forEach(b=>b.onclick=()=>takeSeat(+b.dataset.take));
   document.querySelectorAll('[data-ai]').forEach(b=>b.onclick=()=>ON.net.set(`games/${ON.code}/seats/${b.dataset.ai}`,{name:AI_NAMES[+b.dataset.ai]||W.merchant,ai:true,owner:'ai'}));
@@ -1040,7 +1170,7 @@ async function takeSeat(i){
   if(!ok)toast('Someone just took that seat.');
 }
 async function startOnline(){
-  const d=ON.data;const g=newGame({players:d.seats.map(s=>({name:s.name,ai:s.ai,owner:s.owner})),layout:d.layout});
+  const d=ON.data;const g=newGame({players:d.seats.map(s=>({name:s.name,ai:s.ai,owner:s.owner})),layout:d.layout,exp:!!d.exp});
   const out=JSON.stringify(g);
   await ON.net.tx('games/'+ON.code,c=>{if(!c||c.status!=='lobby'||(c.seats||[]).some(s=>s.owner==='-'))return;c.status='playing';c.state=out;c.version=1;c.started=Date.now();return c;});
 }
@@ -1048,13 +1178,13 @@ async function createOnline(cfg){
   const btn=$('#createBtn');if(btn){btn.disabled=true;btn.textContent='Creating…';}
   try{
     const net=await getNet();const code=rcode();
-    await net.set('games/'+code,{host:ME,created:Date.now(),status:'lobby',layout:cfg.layout,version:0,seats:cfg.seats});
+    await net.set('games/'+code,{host:ME,created:Date.now(),status:'lobby',layout:cfg.layout,exp:!!cfg.exp,version:0,seats:cfg.seats});
     enterOnline(code);
   }catch(e){toast("Couldn't create the game: "+(e.message||e));if(btn){btn.disabled=false;btn.textContent='Create game';}}
 }
 
 /* ---------- home ---------- */
-const HOME={n:2,seats:['friend','friend','ai','ai','ai'],layout:'short'};
+const HOME={n:2,seats:['friend','friend','ai','ai','ai'],layout:'short',exp:false};
 function goHome(){leaveOnline();GEN++;pendingMove=pendingEnd=null;$('#sheetWrap').hidden=true;showScreen('home');renderHome();}
 function renderHome(){
   let saved=null;try{saved=JSON.parse(lsGet(STORE)||'null');}catch(e){}
@@ -1071,6 +1201,7 @@ function renderHome(){
       <div class="fld">Players<div class="seg" id="hn">${[2,3,4,5].map(n=>`<button data-n="${n}" class="${HOME.n===n?'on':''}">${n}</button>`).join('')}</div></div>
       <div class="seatcfg">${[...Array(HOME.n-1)].map((_,k)=>`<div class="prow"><i class="mer c-${COLORS[k+1]}"></i><span>Seat ${k+2}</span><div class="seg">${['friend','ai'].map(v=>`<button data-s="${k+1}" data-v="${v}" class="${HOME.seats[k+1]===v?'on':''}">${v==='ai'?'AI':'Friend'}</button>`).join('')}</div></div>`).join('')}</div>
       <label class="fld" for="homeLayout">Board layout<select id="homeLayout"><option value="short" ${HOME.layout==='short'?'selected':''}>Short paths (learning)</option><option value="order" ${HOME.layout==='order'?'selected':''}>In order</option><option value="random" ${HOME.layout==='random'?'selected':''}>Random</option></select></label>
+      ${expToggle(HOME.exp)}
       <button class="btn primary big" id="createBtn">Create game</button>
       <div class="join"><label class="fld" for="joinCode">Have a code?<input id="joinCode" maxlength="8" placeholder="e.g. K7X2P" autocapitalize="characters"></label><button class="btn" id="joinBtn">Join</button></div>
     </div>
@@ -1085,11 +1216,12 @@ function renderHome(){
   document.querySelectorAll('#hn [data-n]').forEach(b=>b.onclick=()=>{HOME.n=+b.dataset.n;renderHome();});
   document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{HOME.seats[+b.dataset.s]=b.dataset.v;renderHome();});
   $('#homeLayout').onchange=e=>HOME.layout=e.target.value;
+  document.querySelectorAll('#home [data-exp]').forEach(b=>b.onclick=()=>{HOME.exp=b.dataset.exp==='1';renderHome();});
   $('#createBtn').onclick=()=>{
     const nm=cleanName($('#homeName').value);if(!nm){toast('Type your name first.');$('#homeName').focus();return;}
     lsSet('istanbul-name',nm);
     const seats=[...Array(HOME.n)].map((_,i)=>i===0?{name:nm,ai:false,owner:ME}:HOME.seats[i]==='ai'?{name:AI_NAMES[i],ai:true,owner:'ai'}:{name:'Friend',ai:false,owner:'-'});
-    createOnline({seats,layout:HOME.layout});
+    createOnline({seats,layout:HOME.layout,exp:PREVIEW&&HOME.exp});
   };
   const jc=()=>{const c=$('#joinCode').value.trim();if(c)enterOnline(c);else toast('Type the game code first.');};
   $('#joinBtn').onclick=jc;$('#joinCode').onkeydown=e=>{if(e.key==='Enter')jc();};

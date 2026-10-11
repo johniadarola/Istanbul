@@ -21,9 +21,12 @@ window.THEME = {
     neutral: 'Gutterlane Peddler',
     cart: 'handcart', ext: 'handcart extension',
     king: 'Heron Envoy',
-    tile: 'guild charter', tiles: 'guild charters',
+    tile: 'lodge badge', tiles: 'lodge badges',
     market: 'market town',
     card: 'favour card', cards: 'favour cards',
+    coffee: 'tea', coffeeLong: 'mushroom tea',
+    trader: 'Tea-Seller', traderName: 'Sorrel', traderTitle: 'Sorrel, Squirrel Tea-Seller',
+    guildCard: 'guild card', guildCards: 'guild cards',
     orders: 'Orders'
   },
 
@@ -53,12 +56,20 @@ window.THEME = {
           desc: 'If your cousin is here, send them to any other place and take that action there for free.' },
     13: { name: "Envoy's Aerie", short: 'Aerie',
           desc: 'Deliver the listed goods to Lady Shavala Kartil, Heron Envoy of the Ascendancy, for a Gold Feather. Every Feather given makes the next one ask for one more good.' },
-    14: { name: 'Hall of Wool & Herbs', short: 'Wool & Herb Hall',
-          desc: 'Carry enough Wool or Herbs to take that guild charter, pay one of the goods, and gain its perk. Holding both charters here earns a Gold Feather.' },
-    15: { name: 'Hall of Honey & Pearls', short: 'Honey & Pearl Hall',
-          desc: 'Carry enough Honey or Pearls to take that guild charter, pay one of the goods, and gain its perk. Holding both charters here earns a Gold Feather.' },
+    14: { name: 'Wool & Herb Lodge', short: 'Wool & Herb Lodge',
+          desc: 'Carry enough Wool or Herbs to earn that lodge badge, pay one of the goods, and gain its perk. Holding both badges here earns a Gold Feather.' },
+    15: { name: 'Honey & Pearl Lodge', short: 'Honey & Pearl Lodge',
+          desc: 'Carry enough Honey or Pearls to earn that lodge badge, pay one of the goods, and gain its perk. Holding both badges here earns a Gold Feather.' },
     16: { name: "Madame Glimmer's Hoard", short: "Glimmer's Hoard",
-          desc: 'Madame Glimmer, a magpie of expensive tastes, sells a Gold Feather for the price shown. Every purchase raises the price by 1 Copper.' }
+          desc: 'Madame Glimmer, a magpie of expensive tastes, sells a Gold Feather for the price shown. Every purchase raises the price by 1 Copper.' },
+    17: { name: 'The Mushroom Roastery', short: 'Roastery',
+          desc: 'Do 1 to 3 of these, each once: pay 2 Coppers, pay 1 good, or give up a favour card. Each brews 2 mushroom tea.' },
+    18: { name: 'Guild Hall', short: 'Guild Hall',
+          desc: 'Take 1 mushroom tea. (Preview: guild cards arrive in the next update.)' },
+    19: { name: 'The Gutterlane Snug', short: 'Gutterlane Snug',
+          desc: 'Slip the regulars some tea for the Barrier, a Snug favour or a Gold Feather. (Preview: opens in a later update.)' },
+    20: { name: 'The Tea House', short: 'Tea House',
+          desc: 'Serve mushroom tea for a Gold Feather. The first costs 6 tea, and each Feather taken makes the next cost 1 more.' }
   },
 
   cards: {
@@ -71,7 +82,15 @@ window.THEME = {
     stay:    { name: 'Hold the stall',  text: "Don't move this turn. You still leave an apprentice where you are." },
     move34:  { name: 'Shortcut',        text: 'Move 3 or 4 places this turn instead of 1 or 2.' },
     recall:  { name: 'Whistle',         text: 'Before moving, call 1 apprentice home.' },
-    smAny:   { name: 'Haggle',          text: 'At the Riverside Stalls, sell any types of goods. Offered during that action.' }
+    smAny:   { name: 'Haggle',          text: 'At the Riverside Stalls, sell any types of goods. Offered during that action.' },
+    tea2:    { name: 'Spare pouch',     text: 'Take 2 mushroom tea.' },
+    tea8:    { name: 'Sell a brew',     text: 'Pay 1 mushroom tea and take 8 Coppers.' },
+    diceGift:{ name: 'Lucky bones',     text: 'Roll 2 dice and take a reward for each: 1 = 2 Coppers, 2 = Honey, 3 = Herbs, 4 = Wool, 5 = Pearls, 6 = tea.' },
+    swap3:   { name: 'Swap meet',       text: 'Exchange up to 3 goods or tea for the same number of other goods or tea.' },
+    six:     { name: 'Weighted bone',   text: 'After you roll the dice, turn one die to 6. Offered when you roll.' },
+    corner:  { name: 'Back alleys',     text: 'Instead of moving 1 or 2 places, move to any corner place.' },
+    dWain:   { name: "Bodkin's favour", text: "At Bodkin's Cartwright, take the action a second time. Offered during that action." },
+    dCH:     { name: 'Second pot',      text: 'At the Tea House, take the action a second time. Offered during that action.' }
   },
 
   tileAbil: {
