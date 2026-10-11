@@ -80,6 +80,7 @@ window.THEME = {
 
   art: {
     tiles: {
+      4: 'art/tiles/04-hive-barn.webp',
       7: 'art/tiles/07-town-well.webp'
     },
     merchants: {
