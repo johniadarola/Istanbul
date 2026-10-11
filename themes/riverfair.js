@@ -108,6 +108,12 @@ window.THEME = {
       teal: 'art/standees/jay.webp',
       white: 'art/standees/toad.webp'
     },
+    icons: {
+      wool: 'art/icons/wool.webp', herbs: 'art/icons/herbs.webp', honey: 'art/icons/honey.webp', pearls: 'art/icons/pearls.webp',
+      any: 'art/icons/any.webp', feather: 'art/icons/feather.webp', coin: 'art/icons/coin.webp',
+      apprentice: 'art/icons/apprentice.webp', cousin: 'art/icons/cousin.webp',
+      card: 'art/icons/card.webp', charter: 'art/icons/charter.webp', crate: 'art/icons/crate.webp'
+    },
     neutral: 'art/standees/rat.webp',   // the three neutral traders in 2-player games
     gov: 'art/standees/crow.webp',      // Crow Clerk
     smug: 'art/standees/fox.webp'       // Fox

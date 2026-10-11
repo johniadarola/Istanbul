@@ -426,3 +426,10 @@ body.t-riverfair{
 .t-riverfair .gain>span{background:#fbf3df;box-shadow:0 0 0 1px #c9a24a,0 2px 8px rgba(0,0,0,.25)}
 /* dock in theme */
 .t-riverfair #dock{background:linear-gradient(to bottom,var(--surface),var(--bg));border-top:2px solid #c9a24a}
+.tile .plate img.gi{width:13px;height:13px;vertical-align:-2px}
+@media (min-width:520px){.tile .plate img.gi{width:16px;height:16px}}
+.meter .lbl img.gi{width:16px;height:16px}
+.ast.icon{width:18px;height:18px}.fam.icon{width:18px;height:18px}
+.ast.icon img,.fam.icon img{background:#fbf3df}
+.rubies img.gi.fe{width:18px;height:18px;vertical-align:-3px}
+.rubies .off img.gi.fe{filter:grayscale(1) opacity(.3)}

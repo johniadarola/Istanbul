@@ -811,7 +811,7 @@ function renderStrip(){
     <span class="ms-stat ms-coin" title="${W.cur}">${coinIc()||'<span class="coin">c</span>'}<b>${q.lira}</b></span>
     <span class="ms-goods">${GOODS.map(c=>`<span class="ms-g ${q.goods[c]>=cap(q)?'full':''} ${q.goods[c]===0?'zero':''}" title="${GNAME[c]} ${q.goods[c]} of ${cap(q)}">${chip(c)}<b>${q.goods[c]}</b><small>/${cap(q)}</small></span>`).join('')}</span>
     <span class="ms-stat ms-ap ${q.stack===0?'bad':''}" title="${W.assistants} with you">${ICON('apprentice')?`<img class="gi" src="${ICON('apprentice')}" alt="">`:`<i class="ast c-${q.color}"></i>`}<b>${q.stack}</b></span>
-    <span class="ms-stat ms-cards" title="${W.cards}"><span class="mini-card"></span><b>${q.cards.length}</b></span>`;
+    <span class="ms-stat ms-cards" title="${W.cards}">${ICON('card')?`<img class="gi" src="${ICON('card')}" alt="">`:'<span class="mini-card"></span>'}<b>${q.cards.length}</b></span>`;
   $('#msWho').onclick=()=>{const t=document.querySelector(`.pl[data-pi="${q.i}"]`);if(t)t.scrollIntoView({behavior:REDUCED?'auto':'smooth',block:'center'});};
   fitDock();
 }
