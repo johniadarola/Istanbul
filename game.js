@@ -52,6 +52,8 @@ function postItems(g){return[0,1,2,3].map(i=>i<g.post?POST_TOP[i]:POST_BOT[i]);}
 const ICON=k=>(window.THEME&&THEME.art&&THEME.art.icons&&THEME.art.icons[k])||null;
 const GICON={r:'wool',g:'herbs',y:'honey',b:'pearls','*':'any'};
 const chip=c=>{const ic=ICON(GICON[c]);return ic?`<img class="gi" src="${ic}" alt="${c==='*'?'any good':GNAME[c]}">`:`<span class="gd ${c==='*'?'g-any':'g-'+c}"></span>`;};
+const CS=()=>{const ic=ICON('coin');return ic?`<img class="gi" src="${ic}" alt="${W.cur}">`:W.curShort;};
+const CD=()=>{const ic=ICON('card');return ic?`<img class="gi" src="${ic}" alt="${W.card}">`:'';};
 const coinIc=()=>{const ic=ICON('coin');return ic?`<img class="gi" src="${ic}" alt="${W.cur}">`:'';};
 const clone=o=>JSON.parse(JSON.stringify(o));
 const L=n=>`${n} ${W.cur}`;
@@ -535,9 +537,9 @@ function runFx(before){
   if(!FX.quiet){
     now.players.forEach((p,i)=>{
       const q=prev.players[i],bits=[];
-      const dl=p.lira-q.lira;if(dl)bits.push(`<span class="${dl>0?'up':'down'}">${dl>0?'+':'−'}${Math.abs(dl)} ${W.curShort}</span>`);
+      const dl=p.lira-q.lira;if(dl)bits.push(`<span class="${dl>0?'up':'down'}">${dl>0?'+':'−'}${Math.abs(dl)} ${CS()}</span>`);
       GOODS.forEach(c=>{const d=p.goods[c]-q.goods[c];if(d)bits.push(`<span class="${d>0?'up':'down'}">${d>0?'+':'−'}${Math.abs(d)}${chip(c)}</span>`);});
-      const dc=p.cards-q.cards;if(dc>0)bits.push(`<span class="up">+${dc} ${plural(dc,'card','cards')}</span>`);
+      const dc=p.cards-q.cards;if(dc>0)bits.push(`<span class="up">+${dc} ${CD()||plural(dc,'card','cards')}</span>`);
       if(p.ext>q.ext)bits.push(`<span class="up">${W.cart} +1</span>`);
       if(p.tiles>q.tiles)bits.push(`<span class="up">+1 tile</span>`);
       if(dl>0)sounds.add('coin');if(GOODS.some(c=>p.goods[c]>q.goods[c]))sounds.add('goods');if(dc>0)sounds.add('card');
@@ -588,25 +590,25 @@ function showDice(r){
 function hintFor(p,pl,mode){
   const g=G;
   if(pl!==7&&!(mode!=='stay'&&p.assist[pl])&&p.stack<=0)return{t:`No ${W.assistant}`,k:'bad'};
-  if(pl!==7){const n=g.players.filter(q=>q!==p&&q.pos===pl).length+g.neutrals.filter(x=>x.pos===pl).length;if(p.lira<2*n)return{t:`Can't pay ${2*n}${W.curShort}`,k:'bad'};}
+  if(pl!==7){const n=g.players.filter(q=>q!==p&&q.pos===pl).length+g.neutrals.filter(x=>x.pos===pl).length;if(p.lira<2*n)return{t:`Can't pay ${2*n}${CS()}`,k:'bad'};}
   const fam=pl!==12&&g.players.some(q=>q!==p&&q.family===pl)?' +catch':'';
   const H=(t,k)=>({t:t+fam,k:k||(fam?'good':'')});
   switch(pl){
-  case 1:return p.ext>=3?H('Fully extended','meh'):p.lira>=7?H(p.ext===2?`◆ Extend`:'Extend cart',p.ext===2?'ruby':'good'):H(`Need ${7-p.lira}${W.curShort} more`,'meh');
+  case 1:return p.ext>=3?H('Fully extended','meh'):p.lira>=7?H(p.ext===2?`◆ Extend`:'Extend cart',p.ext===2?'ruby':'good'):H(`Need ${7-p.lira}${CS()} more`,'meh');
   case 2:case 3:case 4:{const c={2:'r',3:'g',4:'y'}[pl];const n=cap(p)-p.goods[c];return n?H(`+${n} ${chip(c)}`,'good'):H('Already full','meh');}
-  case 5:{let l=0,gd=0;postItems(g).forEach(it=>{if(it.l)l+=it.l;else if(p.goods[it.g]<cap(p))gd++;});return H(`+${l}${W.curShort} +${gd} goods`,'good');}
-  case 6:return H('+1 card','good');
+  case 5:{let l=0,gd=0;postItems(g).forEach(it=>{if(it.l)l+=it.l;else if(p.goods[it.g]<cap(p))gd++;});return H(`+${l}${CS()} +${gd}${ICON('any')?chip('*'):' goods'}`,'good');}
+  case 6:return H(`+1 ${CD()||'card'}`,'good');
   case 7:{let n=0;for(const k in p.assist)n+=p.assist[k];return n?H(`${n} home`,'good'):H('Nothing out','meh');}
   case 8:return H('Good + roll','good');
   case 9:return H('Gamble','good');
-  case 10:case 11:{const mk=pl===10?g.large:g.small;const t=tileCount(mk[0]);let n=Math.min(5,GOODS.reduce((s,c)=>s+Math.min(t[c],p.goods[c]),0));if(pl===11&&hasCard(p,'smAny'))n=Math.max(n,Math.min(5,totalGoods(p)));return n?H(`Sell ${n}: ${REV[pl][n]}${W.curShort}`,'good'):H('Nothing to sell','meh');}
+  case 10:case 11:{const mk=pl===10?g.large:g.small;const t=tileCount(mk[0]);let n=Math.min(5,GOODS.reduce((s,c)=>s+Math.min(t[c],p.goods[c]),0));if(pl===11&&hasCard(p,'smAny'))n=Math.max(n,Math.min(5,totalGoods(p)));return n?H(`Sell ${n}: ${REV[pl][n]}${CS()}`,'good'):H('Nothing to sell','meh');}
   case 12:return p.family===12?H('Free action','good'):H(`${W.family} away`,'meh');
   case 13:{if(g.sultanTaken>=g.sultanRubies)return H('Sold out','meh');const m=sultanMissing(p,sultanReq(g));return m?H(`Need ${m} more`,'meh'):H(`◆ Deliver`,'ruby');}
   case 14:case 15:{const cols=MOSQUE[pl];const ok=cols.filter(c=>!p.tiles[c]&&g.mosque[c].length&&p.goods[c]>=g.mosque[c][0]);
     if(ok.length){const done=cols.every(c=>p.tiles[c]||ok.includes(c))&&cols.filter(c=>!p.tiles[c]).length===1;return H(done?'◆ Tile':'Claim tile',done&&g.mosqueRubies[pl]>0?'ruby':'good');}
     const left=cols.filter(c=>!p.tiles[c]&&g.mosque[c].length);if(!left.length)return H('Done','meh');
     const c=left.sort((a,b)=>(g.mosque[a][0]-p.goods[a])-(g.mosque[b][0]-p.goods[b]))[0];return H(`Need ${g.mosque[c][0]} ${chip(c)}`,'meh');}
-  case 16:{if(g.gemTaken>=g.gemRubies)return H('Sold out','meh');const pr=gemPrice(g);return p.lira>=pr?H(`◆ ${pr}${W.curShort}`,'ruby'):H(`Need ${pr-p.lira}${W.curShort} more`,'meh');}
+  case 16:{if(g.gemTaken>=g.gemRubies)return H('Sold out','meh');const pr=gemPrice(g);return p.lira>=pr?H(`◆ ${pr}${CS()}`,'ruby'):H(`Need ${pr-p.lira}${CS()} more`,'meh');}
   }
   return H('');
 }
@@ -641,10 +643,10 @@ function rulesSheet(){
 /* ---------- rendering ---------- */
 function tileStatus(pl){
   switch(pl){
-  case 1:return `<span class="ruby">◆${G.wainRubies}</span> 7${W.curShort}`;
+  case 1:return `<span class="ruby">◆${G.wainRubies}</span> 7${CS()}`;
   case 2:case 3:case 4:return `${chip({2:'r',3:'g',4:'y'}[pl])} fill up`;
-  case 5:return postItems(G).map(it=>it.g?chip(it.g):`${it.l}${W.curShort}`).join(' ');
-  case 6:return '+2 −1 cards';
+  case 5:return postItems(G).map(it=>it.g?chip(it.g):`${it.l}${CS()}`).join(' ');
+  case 6:return `+2 −1 ${CD()||'cards'}`;
   case 7:return `${W.assistants} home`;
   case 8:return 'good + dice';
   case 9:return 'bet 3–12';
@@ -653,7 +655,7 @@ function tileStatus(pl){
   case 12:return 'free action';
   case 13:{const left=G.sultanRubies-G.sultanTaken;return left?`<span class="ruby">◆${left}</span> ${sultanReq(G).length} goods`:'sold out';}
   case 14:case 15:return MOSQUE[pl].map(c=>`${chip(c)}${G.mosque[c].length?G.mosque[c][0]:'–'}`).join(' ')+` <span class="ruby">◆${G.mosqueRubies[pl]}</span>`;
-  case 16:{const left=G.gemRubies-G.gemTaken;return left?`<span class="ruby">◆${left}</span> ${gemPrice(G)}${W.curShort}`:'sold out';}
+  case 16:{const left=G.gemRubies-G.gemTaken;return left?`<span class="ruby">◆${left}</span> ${gemPrice(G)}${CS()}`:'sold out';}
   }
 }
 function merchantToken(q,active){
