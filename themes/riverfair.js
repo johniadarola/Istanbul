@@ -91,7 +91,11 @@ window.THEME = {
       9: 'art/tiles/09-tavern.webp',
       10: 'art/tiles/10-grand-market.webp',
       11: 'art/tiles/11-riverside-stalls.webp',
-      12: 'art/tiles/12-watch-house.webp'
+      12: 'art/tiles/12-watch-house.webp',
+      13: 'art/tiles/13-envoys-aerie.webp',
+      14: 'art/tiles/14-hall-wool-herbs.webp',
+      15: 'art/tiles/15-hall-honey-pearls.webp',
+      16: 'art/tiles/16-magpies-hoard.webp'
     },
     merchants: {
       red: 'art/standees/hedgehog.webp',
