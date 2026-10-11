@@ -512,6 +512,7 @@ function renderSoundBtn(){const b=$('#soundBtn');b.setAttribute('aria-pressed',S
 
 /* ---------- board-game effects: sliding tokens, gain pop-ups, dice, ruby flourish ---------- */
 const FX={prev:null,quiet:false,rollSeen:null};
+const FACE={}; // standees face the way they last walked
 function fxSnap(){return{id:G.id,cur:G.current,over:G.over,roll:G.lastRoll?G.lastRoll.n:0,players:G.players.map(p=>({pos:p.pos,lira:p.lira,goods:{...p.goods},rubies:p.rubies,cards:p.cards.length,ext:p.ext,tiles:GOODS.reduce((s,c)=>s+p.tiles[c],0)}))};}
 function tokenRects(){const b=$('#board');if(!b)return{};const br=b.getBoundingClientRect();const o={};b.querySelectorAll('[data-k]').forEach(el=>{const r=el.getBoundingClientRect();o[el.dataset.k]={x:r.left-br.left,y:r.top-br.top};});return o;}
 function runFx(before){
@@ -521,7 +522,10 @@ function runFx(before){
   const b=$('#board'),br=b.getBoundingClientRect();
   // slide tokens from where they were
   if(!REDUCED)b.querySelectorAll('[data-k]').forEach(el=>{const was=before[el.dataset.k];const r=el.getBoundingClientRect();
-    if(was){const dx=was.x-(r.left-br.left),dy=was.y-(r.top-br.top);if(Math.abs(dx)+Math.abs(dy)>2)el.animate([{translate:`${dx}px ${dy}px`},{translate:'0 0'}],{duration:520,easing:'cubic-bezier(.3,.75,.25,1)'});}
+    if(was){const dx=was.x-(r.left-br.left),dy=was.y-(r.top-br.top);if(Math.abs(dx)+Math.abs(dy)>2){
+      el.animate([{translate:`${dx}px ${dy}px`},{translate:'0 0'}],{duration:620,easing:'cubic-bezier(.3,.75,.25,1)'});
+      if(el.classList.contains('standee')){const i=+el.dataset.k.slice(1);if(Math.abs(dx)>4){FACE[i]=dx>0;el.classList.toggle('flip',FACE[i]);}
+        const img=el.querySelector('img');if(img)img.animate([{rotate:'0deg',translate:'0 0'},{rotate:'-7deg',translate:'0 -3px'},{rotate:'6deg',translate:'0 0'},{rotate:'-6deg',translate:'0 -3px'},{rotate:'5deg',translate:'0 0'},{rotate:'0deg',translate:'0 0'}],{duration:620,easing:'linear'});}}}
     else el.animate([{scale:0,opacity:0},{scale:1.25,opacity:1,offset:.6},{scale:1}],{duration:380,easing:'ease-out'});});
   const sounds=new Set();
   if(now.players.some((p,i)=>p.pos!==prev.players[i].pos))sounds.add('move');
@@ -651,7 +655,7 @@ function tileStatus(pl){
 }
 function merchantToken(q,active){
   const art=T.art.merchants&&T.art.merchants[q.color];
-  return `<i class="mer c-${q.color} ${active?'active':''} ${art?'standee':''}" data-k="m${q.i}" title="${esc(q.name)}">${art?`<img src="${art}" alt="">`:q.stack}</i>`;
+  return `<i class="mer c-${q.color} ${active?'active':''} ${art?'standee':''} ${art&&FACE[q.i]?'flip':''}" data-k="m${q.i}" title="${esc(q.name)}">${art?`<img src="${art}" alt="">`:q.stack}</i>`;
 }
 function tokens(pl){
   const p=cur(G);let h='';
@@ -724,7 +728,7 @@ function render(){
   const reach=new Set(moving?reachable(G,p,UI.mode):[]);
   $('#board').innerHTML=G.layout.map(pl=>{
     const art=T.art.tiles&&T.art.tiles[pl];const h=reach.has(pl)?hintFor(p,pl,UI.mode):null;
-    return `<button class="tile k-${KIND[pl]} ${art?'art':''} ${reach.has(pl)?'reach':''} ${moving&&!reach.has(pl)?'dim':''} ${UI.sel===pl?'sel':''} ${UI.sugg===pl?'sugg':''}" data-pl="${pl}" aria-label="${PNAME[pl]}${h?': '+h.t.replace(/<[^>]+>/g,''):''}" ${art?`style="--art:url('${art}')"`:''}><span class="pn">${pl}</span><span class="nm">${SHORT[pl]}</span><span class="st">${tileStatus(pl)}</span>${h&&h.t?`<span class="hint h-${h.k||'plain'}">${h.t}</span>`:''}${UI.sel===pl&&reach.has(pl)?`<span class="again">Tap again to ${UI.mode==='stay'?'stay':'move'}</span>`:''}<span class="tok">${tokens(pl)}</span></button>`;}).join('');
+    return `<button class="tile k-${KIND[pl]} ${art?'art':''} ${reach.has(pl)?'reach':''} ${moving&&!reach.has(pl)?'dim':''} ${UI.sel===pl?'sel':''} ${UI.sugg===pl?'sugg':''}" data-pl="${pl}" aria-label="${PNAME[pl]}${h?': '+h.t.replace(/<[^>]+>/g,''):''}" ${art?`style="--art:url('${art}')"`:''}><span class="pn">${pl}</span><span class="nm">${SHORT[pl]}</span><span class="st">${tileStatus(pl)}</span>${h&&h.t?`<span class="hint h-${h.k||'plain'}">${h.t}</span>`:''}${UI.sel===pl&&reach.has(pl)?`<span class="again">Tap again to ${UI.mode==='stay'?'stay':'move'}</span>`:''}<span class="tok n${G.players.filter(q=>q.pos===pl).length}">${tokens(pl)}</span></button>`;}).join('');
   document.querySelectorAll('.tile').forEach(t=>t.onclick=()=>{const v=+t.dataset.pl;
     if(moving&&reach.has(v)&&UI.sel===v&&pendingMove){commitMove(v);return;}
     UI.sel=v;render();});

@@ -188,10 +188,18 @@ body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset
 @media (min-width:520px){.tile .hint{font-size:11px}}
 .tile.sugg{box-shadow:inset 0 0 0 3px var(--turq),0 0 0 3px var(--g-y)}
 .tile.sugg::before{content:"Suggested";position:absolute;top:4px;right:4px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;background:var(--g-y);color:#14203b;padding:1px 5px;border-radius:5px;z-index:1}
-/* ---- standee hook ---- */
-.mer.standee{width:26px;height:34px;border-radius:6px 6px 3px 3px;background:none;border:0;border-bottom:4px solid currentColor;display:inline-flex;align-items:flex-end}
-.mer.standee img{width:100%;height:100%;object-fit:contain;object-position:bottom;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
-.mer.standee.c-red{color:var(--p-red)}.mer.standee.c-green{color:var(--p-green)}.mer.standee.c-yellow{color:var(--p-yellow)}.mer.standee.c-white{color:var(--p-white)}.mer.standee.c-teal{color:var(--p-teal)}
+/* ---- standees: painted figures on a coloured base ---- */
+.tile{--sh:46px}
+@media (min-width:520px){.tile{--sh:64px}}
+.mer.standee{width:auto;height:var(--sh,46px);border:0;background:none;border-radius:0;position:relative;display:inline-flex;align-items:flex-end;justify-content:center;padding:0 1px 3px;color:var(--p-red);flex:none}
+.mer.standee.c-green{color:var(--p-green)}.mer.standee.c-yellow{color:var(--p-yellow)}.mer.standee.c-white{color:var(--p-white)}.mer.standee.c-teal{color:var(--p-teal)}
+.mer.standee::after{content:"";position:absolute;left:8%;right:8%;bottom:0;height:8px;border-radius:50%;background:currentColor;box-shadow:inset 0 -2px 0 rgba(0,0,0,.25),0 0 0 1.5px var(--tokline);z-index:0}
+.mer.standee img{position:relative;z-index:1;height:100%;width:auto;max-width:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.45));transform-origin:50% 100%}
+.mer.standee.flip img{transform:scaleX(-1)}
+.mer.standee.active{box-shadow:none;animation:none}
+.mer.standee.active::after{box-shadow:inset 0 -2px 0 rgba(0,0,0,.25),0 0 0 2px var(--surface),0 0 0 4px var(--bole)}
+.banner .who .mer.standee{height:34px}
+.tile .tok{align-items:flex-end}
 /* ---- gain pop-ups ---- */
 .gain{position:fixed;z-index:25;pointer-events:none;display:flex;gap:4px;flex-wrap:wrap;justify-content:center;max-width:180px;font-weight:800;font-size:13px;font-variant-numeric:tabular-nums}
 .gain>span{display:inline-flex;align-items:center;gap:2px;padding:2px 7px;border-radius:999px;background:var(--raised);box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:nowrap}
@@ -238,3 +246,12 @@ body.has-movebar .wrap{padding-bottom:96px}
 @media (min-width:900px){#moveBar{display:none!important}body.has-movebar .wrap{padding-bottom:40px}}
 /* ---- large art in the place panel ---- */
 .part{display:block;width:100%;max-height:240px;object-fit:cover;border-radius:10px;margin-bottom:10px}
+@media (min-width:900px){.tile{--sh:74px}}
+/* crowded tiles: standees overlap like figures standing in a group */
+.tile .tok .standee+.standee{margin-left:calc(var(--sh) * -0.42)}
+.tile .tok .standee:nth-of-type(2){z-index:1}.tile .tok .standee:nth-of-type(3){z-index:2}.tile .tok .standee:nth-of-type(4){z-index:3}.tile .tok .standee:nth-of-type(5){z-index:4}
+.tile .tok{position:absolute;left:4px;right:4px;bottom:4px;margin:0;z-index:1;flex-wrap:nowrap}
+.tile .tok.n3{--sh2:.82}.tile .tok.n4{--sh2:.72}.tile .tok.n5{--sh2:.66}
+.tile .tok .standee{height:calc(var(--sh) * var(--sh2,1))}
+.tile .tok .standee+.standee{margin-left:calc(var(--sh) * var(--sh2,1) * -0.45)}
+.tile .again{bottom:auto;top:calc(100% - 22px)}
