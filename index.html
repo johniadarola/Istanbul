@@ -13,9 +13,11 @@
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1>Istanbul</h1><span id="roundInfo"></span></div>
+    <div class="brand"><h1 id="brandName">Istanbul</h1><span id="roundInfo"></span></div>
     <div class="row">
       <button class="btn" id="codeChip" hidden title="Copy the invite link"></button>
+      <button class="btn icon" id="soundBtn" aria-pressed="true"></button>
+      <button class="btn" id="rulesBtn">How to play</button>
       <button class="btn" id="newBtn">Menu</button>
     </div>
   </header>
@@ -30,14 +32,24 @@
       </div>
       <div class="side">
         <div class="card"><h4>Merchants</h4><div id="players"></div></div>
-        <div class="card"><h4>Bazaar log</h4><ul class="log" id="log"></ul></div>
+        <div class="card"><h4>Game log</h4><ul class="log" id="log"></ul></div>
       </div>
     </div>
   </div>
-  <p class="foot">Unofficial fan implementation of Rüdiger Dorn's <i>Istanbul</i> (Pegasus Spiele) for personal play. Demand tiles, the Sultan's goods track and ruby counts are approximations of the printed components.</p>
+  <p class="foot" id="footText"></p>
 </div>
 <div id="sheetWrap" hidden><div id="sheet" role="dialog" aria-modal="true"></div></div>
 <div id="toast" hidden></div>
+<script>
+  // ?theme=name loads themes/name.js instead of the default; the choice is remembered on this device.
+  (function(){var q=new URLSearchParams(location.search).get('theme'),t;
+    try{if(q)localStorage.setItem('istanbul-theme',q);t=q||localStorage.getItem('istanbul-theme');}catch(e){t=q;}
+    t=String(t||'istanbul').replace(/[^a-z0-9-]/gi,'')||'istanbul';
+    document.write('<script src="themes/'+t+'.js"><\/script>');})();
+</script>
+<script>
+  if(!window.THEME){try{localStorage.removeItem('istanbul-theme');}catch(e){}document.write('<script src="themes/istanbul.js"><\/script>');}
+</script>
 <script src="game.js"></script>
 </body>
 </html>
