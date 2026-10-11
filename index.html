@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Istanbul</title>
+<meta name="description" content="Play Istanbul, the bazaar board game, online with friends or against AI merchants.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Figtree:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>Istanbul</h1><span id="roundInfo"></span></div>
+    <div class="row">
+      <button class="btn" id="codeChip" hidden title="Copy the invite link"></button>
+      <button class="btn" id="newBtn">Menu</button>
+    </div>
+  </header>
+  <section id="home" hidden></section>
+  <section id="lobby" hidden></section>
+  <div id="table" hidden>
+    <div class="banner" id="banner"></div>
+    <div class="main">
+      <div style="display:grid;gap:14px;min-width:0">
+        <div class="board" id="board"></div>
+        <div class="card" id="panel"></div>
+      </div>
+      <div class="side">
+        <div class="card"><h4>Merchants</h4><div id="players"></div></div>
+        <div class="card"><h4>Bazaar log</h4><ul class="log" id="log"></ul></div>
+      </div>
+    </div>
+  </div>
+  <p class="foot">Unofficial fan implementation of Rüdiger Dorn's <i>Istanbul</i> (Pegasus Spiele) for personal play. Demand tiles, the Sultan's goods track and ruby counts are approximations of the printed components.</p>
+</div>
+<div id="sheetWrap" hidden><div id="sheet" role="dialog" aria-modal="true"></div></div>
+<div id="toast" hidden></div>
+<script src="game.js"></script>
+</body>
+</html>

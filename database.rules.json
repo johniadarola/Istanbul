@@ -1,0 +1,17 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "games": {
+      "$code": {
+        ".read": true,
+        ".write": true,
+        ".validate": "$code.matches(/^[A-Z0-9]{4,8}$/)",
+        "state": { ".validate": "newData.isString() && newData.val().length < 400000" },
+        "live": {
+          "s": { ".validate": "newData.isString() && newData.val().length < 400000" }
+        }
+      }
+    }
+  }
+}
