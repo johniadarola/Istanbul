@@ -900,10 +900,10 @@ function runFx(before){
       if(p.tiles>q.tiles)bits.push(`<span class="up">+1 tile</span>`);
       if(dl>0)sounds.add('coin');if(GOODS.some(c=>p.goods[c]>q.goods[c]))sounds.add('goods');if(dc>0)sounds.add('card');
       if(bits.length)popGain(i,bits.join(''));
-      if(dl>0)flyGain(i,'lira',Math.ceil(dl/3),CS());
+      if(dl>0)flyGain(i,'lira',dl,CS());
       GOODS.forEach(c=>{const d=p.goods[c]-q.goods[c];if(d>0)flyGain(i,c,d,chip(c));});
       if(p.coffee>q.coffee)flyGain(i,'coffee',p.coffee-q.coffee,teaIc());
-      if(dl<0)flyGain(i,'lira',Math.ceil(-dl/3),CS(),true);
+      if(dl<0)flyGain(i,'lira',-dl,CS(),true);
       GOODS.forEach(c=>{const d=q.goods[c]-p.goods[c];if(d>0)flyGain(i,c,d,chip(c),true);});
       if(p.coffee<q.coffee)flyGain(i,'coffee',q.coffee-p.coffee,teaIc(),true);
       flyApprentices(i,q.assist||{},p.assist||{},before,br);
@@ -1312,9 +1312,10 @@ function flyGain(i,what,n,html,out){
   const tx=tr.left+tr.width/2,ty=tr.top+tr.height*0.4,bx=br.left+br.width/2,by=br.top+br.height/2;
   if(out){flyOut(bx,by,tx,ty,n,html,bd);return;}
   const sx=tx,sy=ty,ex=bx,ey=by,to=bd;
-  for(let k=0;k<Math.min(n,4);k++){
+  const m=n;
+  for(let k=0;k<m;k++){
     const el=document.createElement('div');el.className='fly';el.innerHTML=html;document.body.appendChild(el);
-    const ox=(k-(Math.min(n,4)-1)/2)*14,up=-38-8*k;
+    const ox=SPREAD(k,m),up=-38-6*(k%5);
     const mx=(sx+ex)/2,my=Math.min(sy,ey)-70;
     const anim=el.animate([
       {transform:`translate(${sx}px,${sy}px) translate(-50%,-50%) scale(.3)`,opacity:0},
@@ -1322,8 +1323,8 @@ function flyGain(i,what,n,html,out){
       {transform:`translate(${sx+ox}px,${sy+up-6}px) translate(-50%,-50%) scale(1.1)`,opacity:1,offset:.42},
       {transform:`translate(${mx}px,${my}px) translate(-50%,-50%) scale(.95)`,opacity:1,offset:.7},
       {transform:`translate(${ex}px,${ey}px) translate(-50%,-50%) scale(.6)`,opacity:.9}],
-      {duration:1150,delay:120*k,easing:'cubic-bezier(.45,0,.4,1)',fill:'backwards'});
-    anim.onfinish=()=>{el.remove();if(k===Math.min(n,4)-1)to.animate([{transform:'scale(1)'},{transform:'scale(1.35)'},{transform:'scale(1)'}],{duration:320,easing:'ease-out'});};
+      {duration:1150,delay:GAP(m)*k,easing:'cubic-bezier(.45,0,.4,1)',fill:'backwards'});
+    anim.onfinish=()=>{el.remove();if(k===m-1)to.animate([{transform:'scale(1)'},{transform:'scale(1.35)'},{transform:'scale(1)'}],{duration:320,easing:'ease-out'});};
   }
 }
 /* apprentices: gathered ones fly back to your board, placed ones fly out to the tile */
@@ -1353,7 +1354,7 @@ function flyApprentices(i,was,now,before,br){
 const bump=el=>el.animate([{transform:'scale(1)'},{transform:'scale(1.3)'},{transform:'scale(1)'}],{duration:300,easing:'ease-out'});
 function flyPath(sx,sy,ex,ey,n,html,delay,onLand){
   if(REDUCED){onLand&&onLand();return;}
-  const m=Math.min(n,4),mx=(sx+ex)/2,my=Math.min(sy,ey)-60;
+  const m=n,mx=(sx+ex)/2,my=Math.min(sy,ey)-60;
   for(let k=0;k<m;k++){
     const el=document.createElement('div');el.className='fly';el.innerHTML=html;document.body.appendChild(el);
     el.animate([
@@ -1361,7 +1362,7 @@ function flyPath(sx,sy,ex,ey,n,html,delay,onLand){
       {transform:`translate(${sx}px,${sy-22}px) translate(-50%,-50%) scale(1.15)`,opacity:1,offset:.2},
       {transform:`translate(${mx}px,${my}px) translate(-50%,-50%) scale(1.05)`,opacity:1,offset:.6},
       {transform:`translate(${ex}px,${ey}px) translate(-50%,-50%) scale(.85)`,opacity:1}],
-      {duration:1000,delay:delay+110*k,easing:'cubic-bezier(.45,0,.4,1)',fill:'backwards'}).onfinish=()=>{el.remove();if(k===m-1&&onLand)onLand();};
+      {duration:1000,delay:delay+GAP(m)*k,easing:'cubic-bezier(.45,0,.4,1)',fill:'backwards'}).onfinish=()=>{el.remove();if(k===m-1&&onLand)onLand();};
   }
 }
 /* badges, Snug favours and guild cards travel between their place on the board and the player's panel */
@@ -1380,12 +1381,12 @@ function flyItems(i,was,now){
     const tok=document.querySelector(`#board [data-k="m${i}"]`)||tile(G.players[i].pos);
     const hand=[...card.querySelectorAll('.pcard.fav')].pop()||card.querySelector('.backs.f')||card.querySelector('.hand,.hidhand');
     const d=now.cards-was.cards;
-    for(let n=0;n<Math.min(Math.abs(d),3);n++){if(d>0)go(tok,hand,'card',36,150*k++);else go(hand||card,tok,'card',36,150*k++);}
+    for(let n=0;n<Math.abs(d);n++){if(d>0)go(tok,hand,'card',36,150*k++);else go(hand||card,tok,'card',36,150*k++);}
   }
   if(ICON('guild-card')&&now.guild!==was.guild){
     const hand=[...card.querySelectorAll('.pcard.gld')].pop()||card.querySelector('.backs.g')||card.querySelector('[data-stat="guild"]')||card.querySelector('.hand,.hidhand');
     const d=now.guild-was.guild;
-    for(let n=0;n<Math.min(Math.abs(d),3);n++){
+    for(let n=0;n<Math.abs(d);n++){
       if(d>0)go(tile(18),hand,'guild-card',36,150*k++);
       else go(hand||card,tile(18),'guild-card',36,150*k++);
     }
@@ -1393,17 +1394,17 @@ function flyItems(i,was,now){
 }
 /* spending: lifts off the player's board and drops onto the tile */
 function flyOut(sx,sy,ex,ey,n,html,from){
-  const m=Math.min(n,4);from.animate([{transform:'scale(1)'},{transform:'scale(.8)'},{transform:'scale(1)'}],{duration:260});
+  const m=n;from.animate([{transform:'scale(1)'},{transform:'scale(.8)'},{transform:'scale(1)'}],{duration:260});
   for(let k=0;k<m;k++){
     const el=document.createElement('div');el.className='fly out';el.innerHTML=html;document.body.appendChild(el);
-    const ox=(k-(m-1)/2)*14,mx=(sx+ex)/2,my=Math.min(sy,ey)-70;
+    const ox=SPREAD(k,m),mx=(sx+ex)/2,my=Math.min(sy,ey)-70;
     el.animate([
       {transform:`translate(${sx}px,${sy}px) translate(-50%,-50%) scale(.7)`,opacity:0},
       {transform:`translate(${sx}px,${sy-26}px) translate(-50%,-50%) scale(1.15)`,opacity:1,offset:.2},
       {transform:`translate(${mx}px,${my}px) translate(-50%,-50%) scale(1)`,opacity:1,offset:.6},
       {transform:`translate(${ex+ox}px,${ey-10}px) translate(-50%,-50%) scale(.9)`,opacity:1,offset:.88},
       {transform:`translate(${ex+ox}px,${ey+6}px) translate(-50%,-50%) scale(.4)`,opacity:0}],
-      {duration:1100,delay:110*k,easing:'cubic-bezier(.45,0,.4,1)',fill:'backwards'}).onfinish=()=>el.remove();
+      {duration:1100,delay:GAP(m)*k,easing:'cubic-bezier(.45,0,.4,1)',fill:'backwards'}).onfinish=()=>el.remove();
   }
 }
 /* ---------- physical cards ---------- */
@@ -1453,6 +1454,8 @@ function guildCardHTML(n,attrs='',extra=''){
 function backsHTML(n,kind){const ic=ICON(kind==='g'?'guild-card':'card');
   return n?`<span class="backs ${kind}" title="${n} ${kind==='g'?plural(n,W.guildCard,W.guildCards):plural(n,W.card,W.cards)}">${[...Array(Math.min(n,6))].map((_,i)=>`<span class="cback ${kind}" style="--i:${i}">${ic?`<img src="${ic}" alt="">`:''}</span>`).join('')}<b>${n}</b></span>`:'';}
 
+const GAP=n=>Math.max(28,Math.min(120,900/Math.max(1,n))); // ms between icons
+const SPREAD=(k,m)=>((k%5)-(Math.min(m,5)-1)/2)*12;
 /* ---------- my status strip (phones) ---------- */
 let LAST_HUMAN=null;
 function stripPlayer(){
