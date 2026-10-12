@@ -898,6 +898,9 @@ function runFx(before){
       if(dl>0)flyGain(i,'lira',Math.ceil(dl/3),CS());
       GOODS.forEach(c=>{const d=p.goods[c]-q.goods[c];if(d>0)flyGain(i,c,d,chip(c));});
       if(p.coffee>q.coffee)flyGain(i,'coffee',p.coffee-q.coffee,teaIc());
+      if(dl<0)flyGain(i,'lira',Math.ceil(-dl/3),CS(),true);
+      GOODS.forEach(c=>{const d=q.goods[c]-p.goods[c];if(d>0)flyGain(i,c,d,chip(c),true);});
+      if(p.coffee<q.coffee)flyGain(i,'coffee',q.coffee-p.coffee,teaIc(),true);
       if(bits.length){const el=document.querySelector(`.pl[data-pi="${i}"]`);if(el&&!REDUCED)el.animate([{background:'color-mix(in srgb, var(--turq) 22%, transparent)'},{background:'transparent'}],{duration:1200});}
       if(p.rubies>q.rubies){rubyFlourish(i,p.rubies);sounds.add('ruby');}
     });
@@ -1262,7 +1265,7 @@ function initTips(){
   addEventListener('scroll',()=>tip.hidden=true,{passive:true});
 }
 /* gains fly out of the tile and into the player's board */
-function flyTarget(i,what){
+function flyTarget(i,what,out){
   const strip=$('#myStrip');const sp=stripPlayer();
   const inView=el=>{if(!el)return false;const r=el.getBoundingClientRect();return r.width>0&&r.bottom>0&&r.top<innerHeight;};
   let el=null;
@@ -1271,15 +1274,19 @@ function flyTarget(i,what){
     if(inView(el))return el;}
   const card=document.querySelector(`.pl[data-pi="${i}"]`);if(!card)return null;
   el=what==='lira'?card.querySelector('[data-stat="lira"]'):what==='coffee'?card.querySelector('[data-stat="coffee"]'):card.querySelector(`.crow[data-g="${what}"] .slot.full:last-of-type`)||card.querySelector(`.crow[data-g="${what}"]`);
-  if(what!=='lira'&&what!=='coffee'){const row=card.querySelector(`.crow[data-g="${what}"]`);const full=row&&row.querySelectorAll('.slot.full');if(full&&full.length)el=full[full.length-1];}
+  if(what!=='lira'&&what!=='coffee'){const row=card.querySelector(`.crow[data-g="${what}"]`);
+    if(out){const empty=row&&row.querySelector('.slot.empty');el=empty||row;}  // the slot the good just left
+    else{const full=row&&row.querySelectorAll('.slot.full');if(full&&full.length)el=full[full.length-1];}}
   return inView(el)?el:null;
 }
-function flyGain(i,what,n,html){
+function flyGain(i,what,n,html,out){
   if(REDUCED)return;
   const tok=document.querySelector(`#board [data-k="m${i}"]`)||document.querySelector(`#board .tile[data-pl="${G.players[i].pos}"]`);
-  const to=flyTarget(i,what);if(!tok||!to)return;
-  const a=tok.getBoundingClientRect(),z=to.getBoundingClientRect();
-  const sx=a.left+a.width/2,sy=a.top+a.height*0.4,ex=z.left+z.width/2,ey=z.top+z.height/2;
+  const bd=flyTarget(i,what,out);if(!tok||!bd)return;
+  const tr=tok.getBoundingClientRect(),br=bd.getBoundingClientRect();
+  const tx=tr.left+tr.width/2,ty=tr.top+tr.height*0.4,bx=br.left+br.width/2,by=br.top+br.height/2;
+  if(out){flyOut(bx,by,tx,ty,n,html,bd);return;}
+  const sx=tx,sy=ty,ex=bx,ey=by,to=bd;
   for(let k=0;k<Math.min(n,4);k++){
     const el=document.createElement('div');el.className='fly';el.innerHTML=html;document.body.appendChild(el);
     const ox=(k-(Math.min(n,4)-1)/2)*14,up=-38-8*k;
@@ -1292,6 +1299,21 @@ function flyGain(i,what,n,html){
       {transform:`translate(${ex}px,${ey}px) translate(-50%,-50%) scale(.6)`,opacity:.9}],
       {duration:1150,delay:120*k,easing:'cubic-bezier(.45,0,.4,1)',fill:'backwards'});
     anim.onfinish=()=>{el.remove();if(k===Math.min(n,4)-1)to.animate([{transform:'scale(1)'},{transform:'scale(1.35)'},{transform:'scale(1)'}],{duration:320,easing:'ease-out'});};
+  }
+}
+/* spending: lifts off the player's board and drops onto the tile */
+function flyOut(sx,sy,ex,ey,n,html,from){
+  const m=Math.min(n,4);from.animate([{transform:'scale(1)'},{transform:'scale(.8)'},{transform:'scale(1)'}],{duration:260});
+  for(let k=0;k<m;k++){
+    const el=document.createElement('div');el.className='fly out';el.innerHTML=html;document.body.appendChild(el);
+    const ox=(k-(m-1)/2)*14,mx=(sx+ex)/2,my=Math.min(sy,ey)-70;
+    el.animate([
+      {transform:`translate(${sx}px,${sy}px) translate(-50%,-50%) scale(.7)`,opacity:0},
+      {transform:`translate(${sx}px,${sy-26}px) translate(-50%,-50%) scale(1.15)`,opacity:1,offset:.2},
+      {transform:`translate(${mx}px,${my}px) translate(-50%,-50%) scale(1)`,opacity:1,offset:.6},
+      {transform:`translate(${ex+ox}px,${ey-10}px) translate(-50%,-50%) scale(.9)`,opacity:1,offset:.88},
+      {transform:`translate(${ex+ox}px,${ey+6}px) translate(-50%,-50%) scale(.4)`,opacity:0}],
+      {duration:1100,delay:110*k,easing:'cubic-bezier(.45,0,.4,1)',fill:'backwards'}).onfinish=()=>el.remove();
   }
 }
 /* ---------- my status strip (phones) ---------- */
