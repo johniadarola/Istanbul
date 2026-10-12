@@ -2,9 +2,9 @@
 window.THEME = {
   id: 'riverfair',
   name: 'Riverfair',
-  eyebrow: 'A market race beneath the Avian Ascendancy',
-  headline: 'Gold Feathers. One bustling market.',
-  lede2: 'Trade cleverly. Gather your apprentices. Win the envoy’s favour.',
+  eyebrow: 'Where small folk make their fortunes',
+  headline: 'Fill your cart. Earn your feathers.',
+  lede2: 'Push your handcart from stall to stall, leave apprentices behind to work, and race your rivals to the Gold Feathers.',
   lede: "The Ascendancy's envoy has come down to Riverfair, and the town's traders want her favour. Push your handcart from stall to stall with four apprentices in tow, buy low, sell high, and earn Gold Feathers. The first trader to hold five (six with two players) ends the game.",
   foot: 'Riverfair · a market race beneath the Avian Ascendancy.',
 
