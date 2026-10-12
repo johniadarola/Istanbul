@@ -22,7 +22,8 @@ window.THEME = {
     card: 'bonus card', cards: 'bonus cards',
     coffee: 'coffee', coffee1: 'coffee', coffeeLong: 'coffee',
     trader: 'Coffee Trader',
-    guildCard: 'guild card', guildCards: 'guild cards'
+    guildCard: 'guild card', guildCards: 'guild cards',
+    barrier: 'Barrier', ttile: 'Tavern tile', ttiles: 'Tavern tiles', moveTile: 'Movement tile', encTile: 'Encounter tile', bak: 'Baksheesh tile'
   },
 
   goods: { r: 'Fabric', g: 'Spice', y: 'Fruit', b: 'Jewelry' },
@@ -60,9 +61,9 @@ window.THEME = {
     17: { name: 'Roasting Plant', short: 'Roasting Plant',
           desc: 'Do 1 to 3 of these, each once: pay 2 Lira, pay 1 good, or discard a bonus card. Each gives 2 coffee.' },
     18: { name: 'Guild Hall', short: 'Guild Hall',
-          desc: 'Take 1 coffee. (Preview: guild cards arrive in the next update.)' },
+          desc: 'Take 1 coffee and draw 2 guild cards, then discard 1 guild card. On your turn you can play a guild card instead of moving.' },
     19: { name: 'Tavern', short: 'Tavern',
-          desc: 'Bribe the guests with coffee for the Barrier, a Tavern tile or a Ruby. (Preview: opens in a later update.)' },
+          desc: 'Choose one: pay 2 coffee to place the Barrier beside a place and take that place\'s action; buy a Tavern tile (Movement or Encounter); or pay 4 coffee plus the goods on the Baksheesh tile for a Ruby from the Sultan, Gemstone Dealer or Coffee House.' },
     20: { name: 'Coffee House', short: 'Coffee House',
           desc: 'Deliver coffee for a Ruby. The first costs 6 coffee, and each Ruby taken makes the next cost 1 more.' }
   },
@@ -79,6 +80,7 @@ window.THEME = {
     recall:  { name: 'Recall',      text: 'Before moving, bring 1 assistant home to your stack.' },
     smAny:   { name: 'Any goods',   text: 'At the Small Market, sell any types of goods. Offered during that action.' },
     tea2:    { name: '2 coffee',      text: 'Take 2 coffee.' },
+    gcard:   { name: 'Guild contact',  text: 'Pay 2 coffee and draw 1 guild card.' },
     tea8:    { name: 'Coffee for Lira', text: 'Pay 1 coffee and take 8 Lira.' },
     diceGift:{ name: 'Lucky roll',    text: 'Roll 2 dice and take a reward for each: 1 = 2 Lira, 2 = Fruit, 3 = Spice, 4 = Fabric, 5 = Jewelry, 6 = coffee.' },
     swap3:   { name: 'Exchange',      text: 'Exchange up to 3 goods or coffee for the same number of other goods or coffee.' },
@@ -94,6 +96,8 @@ window.THEME = {
     y: 'Once per turn, pay 2 Lira to bring an assistant home.',
     b: 'Gain your 5th assistant right away.'
   },
+
+  expName: 'Mocha & Baksheesh',
 
   aiNames: ['Selim', 'Defne', 'Murat', 'Leyla', 'Kemal'],
 

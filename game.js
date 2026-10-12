@@ -19,7 +19,9 @@ const SULTAN_SEQ=['b','r','g','y','*','b','r','g','y','*'];
 const MOSQUE={14:['r','g'],15:['y','b']};
 const TILE_ABIL=T.tileAbil;
 const CARD_COUNTS={good:4,lira5:4,dSultan:2,dPost:2,dGem:2,family:2,stay:2,move34:4,recall:2,smAny:2};
-const EXP_CARDS={tea2:2,tea8:2,diceGift:2,swap3:2,six:2,corner:2,dWain:2,dCH:2}; // guild-card draw card arrives with stage 2
+const EXP_CARDS={tea2:2,gcard:2,tea8:2,diceGift:2,swap3:2,six:2,corner:2,dWain:2,dCH:2};
+const TT_COST=[1,2,3,4];               // Tavern tiles: cost of each tile in a pile, top first
+const BAK_SIDES=[['y','y','y'],['r','b','g']]; // goods asked by the two sides of the Baksheesh tile
 Object.assign(CARD_COUNTS,EXP_CARDS);
 const CARD_DEFS={};for(const k in CARD_COUNTS)if(T.cards[k])CARD_DEFS[k]={n:CARD_COUNTS[k],...T.cards[k]};
 const COLORS=['red','green','yellow','teal','white'];
@@ -48,6 +50,15 @@ function dist(g,a,b){const[x1,y1]=rc(g,a),[x2,y2]=rc(g,b);return Math.abs(x1-x2)
 const sultanReq=g=>SULTAN_SEQ.slice(0,4+g.sultanTaken);
 const gemPrice=g=>12+g.gemTaken;
 const hasCard=(p,t)=>p.cards.includes(t);
+const cardOK=(ctx,p,t)=>!ctx.noCards&&hasCard(p,t); // place cards can't be used during a guild card's action
+function drawGuild(g){RNG_N++;if(!g.guildDeck.length)g.guildDeck=shuffle(g.guildDiscard.splice(0));return g.guildDeck.pop()||null;}
+function upgradeState(g){ // games saved before guild cards and the Snug existed
+  if(!g||!g.x)return g;
+  if(!g.guildDeck){g.guildDeck=shuffle([...Array(20)].map((_,i)=>i+1));g.guildDiscard=[];}
+  if(!g.tt){g.tt={m:TT_COST.slice(),e:TT_COST.slice()};g.bak=0;g.barrier=null;g.barrierOwner=null;}
+  g.players.forEach(p=>{if(!p.guild)p.guild=[];if(!p.tt)p.tt={m:0,e:0};});
+  return g;
+}
 function useCard(g,p,t){const i=p.cards.indexOf(t);if(i<0)return false;p.cards.splice(i,1);g.discard.push(t);return true;}
 function drawCard(g,fromDiscard){RNG_N++;if(fromDiscard&&g.discard.length)return g.discard.pop();if(!g.deck.length)g.deck=shuffle(g.discard.splice(0));return g.deck.pop()||null;}
 const totalGoods=p=>GOODS.reduce((s,c)=>s+p.goods[c],0);
@@ -75,7 +86,24 @@ const plural=(n,one,many)=>n===1?one:many;
 function checkGen(ctx){if(!ctx.sim&&ctx.gen!==GEN)throw ABORT;}
 async function sleep(ctx,ms){if(ctx.sim)return;await new Promise(r=>setTimeout(r,ms));checkGen(ctx);}
 function cornerPlaces(g){const C=COLS(g),R=g.layout.length/C;return[0,C-1,(R-1)*C,R*C-1].map(i=>g.layout[i]);}
-function reachable(g,p,mode){if(mode==='stay')return[p.pos];if(mode==='corner')return cornerPlaces(g).filter(pl=>pl!==p.pos);const ds=mode==='move34'?[3,4]:[1,2];return g.layout.filter(pl=>pl!==p.pos&&ds.includes(dist(g,p.pos,pl)));}
+function edgeBlocked(g,p,a,b){if(!g.barrier||(p&&g.barrierOwner===p.i))return false;const[x,y]=g.barrier;return(a===x&&b===y)||(a===y&&b===x);}
+/* can p walk from one place to another along some shortest path without crossing the Barrier? */
+function pathClear(g,p,from,to){
+  if(!g.barrier||g.barrierOwner===p.i)return true;
+  const C=COLS(g),[r1,c1]=rc(g,from),[r2,c2]=rc(g,to),dr=Math.sign(r2-r1),dc=Math.sign(c2-c1),at=(r,c)=>g.layout[r*C+c],ok={};
+  ok[r1+','+c1]=true;
+  for(let i=0;i<=Math.abs(r2-r1);i++)for(let j=0;j<=Math.abs(c2-c1);j++){if(!i&&!j)continue;const r=r1+dr*i,c=c1+dc*j;
+    ok[r+','+c]=(i>0&&ok[(r-dr)+','+c]&&!edgeBlocked(g,p,at(r-dr,c),at(r,c)))||(j>0&&ok[r+','+(c-dc)]&&!edgeBlocked(g,p,at(r,c-dc),at(r,c)));}
+  return !!ok[r2+','+c2];
+}
+function neighbours(g,pl){const C=COLS(g),R=g.layout.length/C,[r,c]=rc(g,pl);return[[r-1,c],[r+1,c],[r,c-1],[r,c+1]].filter(([a,b])=>a>=0&&b>=0&&a<R&&b<C).map(([a,b])=>g.layout[a*C+b]);}
+function reachable(g,p,mode){
+  if(mode==='stay')return[p.pos];
+  if(mode==='corner')return cornerPlaces(g).filter(pl=>pl!==p.pos);
+  if(mode==='line'){const[r,c]=rc(g,p.pos);return g.layout.filter(pl=>{if(pl===p.pos)return false;const[a,b]=rc(g,pl);return(a===r||b===c)&&pathClear(g,p,p.pos,pl);});}
+  const ds=mode==='move34'?[3,4]:[1,2];
+  return g.layout.filter(pl=>pl!==p.pos&&ds.includes(dist(g,p.pos,pl))&&pathClear(g,p,p.pos,pl));
+}
 function randomLayout(x){
   if(!x){for(;;){const L2=shuffle([...Array(16)].map((_,i)=>i+1));if(![5,6,9,10].includes(L2.indexOf(7)))continue;if(dist({layout:L2},8,9)<3)continue;return L2;}}
   for(;;){const L2=shuffle([...Array(20)].map((_,i)=>i+1));const g={layout:L2,cols:5};
@@ -96,13 +124,14 @@ function newGame(cfg){
   const n=cfg.players.length;
   const x=!!cfg.exp;
   const layout=cfg.layout==='random'?randomLayout(x):(x?LAYOUTS20:LAYOUTS)[cfg.layout].slice();
-  const players=cfg.players.map((pl,i)=>({i,name:cleanName(pl.name)||('Player '+(i+1)),ai:!!pl.ai,owner:pl.owner||(pl.ai?'ai':''),color:COLORS[i],lira:0,coffee:0,goods:{r:0,g:0,y:0,b:0},ext:0,rubies:0,tiles:{r:0,g:0,y:0,b:0},stack:4,assist:{},pos:7,family:12,cards:[],yellowUsed:false}));
+  const players=cfg.players.map((pl,i)=>({i,name:cleanName(pl.name)||('Player '+(i+1)),ai:!!pl.ai,owner:pl.owner||(pl.ai?'ai':''),color:COLORS[i],lira:0,coffee:0,guild:[],tt:{m:0,e:0},goods:{r:0,g:0,y:0,b:0},ext:0,rubies:0,tiles:{r:0,g:0,y:0,b:0},stack:4,assist:{},pos:7,family:12,cards:[],yellowUsed:false}));
   const deck=[];Object.entries(CARD_DEFS).forEach(([k,d])=>{if(EXP_CARDS[k]&&!x)return;for(let i=0;i<d.n;i++)deck.push(k);});shuffle(deck);
   const start=rnd(n);
   for(let k=0;k<n;k++){const p=players[(start+k)%n];p.lira=2+k;p.cards.push(deck.pop());}
   const reqs=n===2?[2,4]:n===3?[2,3,4]:[2,3,4,5];
   const g={id:Math.random().toString(36).slice(2,10),x,cols:x?5:4,players,layout,deck,discard:[],post:0,
     trader:x?rollSum():null,chTaken:0,chRubies:4,
+    guildDeck:x?shuffle([...Array(20)].map((_,i)=>i+1)):[],guildDiscard:[],tt:{m:TT_COST.slice(),e:TT_COST.slice()},bak:0,barrier:null,barrierOwner:null,
     neutrals:n===2?[{color:'grey',pos:14},{color:'grey',pos:15},{color:'grey',pos:16}]:[],
     gov:rollSum(),smug:rollSum(),
     small:shuffle(SMALL_TILES.map(t=>t.slice())),large:shuffle(LARGE_TILES.map(t=>t.slice())),
@@ -151,8 +180,9 @@ async function resolveMove(ctx,target,mode){
   if(g.gov===target&&(g.deck.length||g.discard.length)){
     if(await decide(ctx,p,'confirm',{key:'gov',title:NT('gov'),text:`Draw a ${W.card}, then pay ${L(2)} or discard a ${W.card}.`,yes:'Draw a card',no:'Ignore'})){
       const c=drawCard(g);if(c)p.cards.push(c);
-      const pay=await decide(ctx,p,'govPay',{});
-      if(pay==='lira'){p.lira-=2;}else{const [d]=p.cards.splice(pay,1);g.discard.push(d);}
+      if(p.tt&&p.tt.e)log(ctx,`${p.name} pays nothing, thanks to the ${W.encTile}.`,p);
+      else{const pay=await decide(ctx,p,'govPay',{});
+      if(pay==='lira'){p.lira-=2;}else{const [d]=p.cards.splice(pay,1);g.discard.push(d);}}
       g.gov=rollSum();log(ctx,`${p.name} deals with ${NS('gov')}, who moves to the ${PNAME[g.gov]}.`,p);
     }
   }
@@ -161,15 +191,15 @@ async function resolveMove(ctx,target,mode){
     if(room.length&&await decide(ctx,p,'confirm',{key:'smug',title:NT('smug'),text:`Take 1 good of your choice, then pay ${L(2)} or 1 good.`,yes:'Take a good',no:'Ignore'})){
       const c=await decide(ctx,p,'pickGood',{key:'smug',title:NT('smug'),text:'Take 1 good.',options:room});
       p.goods[c]++;
-      const pay=await decide(ctx,p,'smugPay',{});
-      if(pay==='lira')p.lira-=2;else p.goods[pay]--;
+      if(!(p.tt&&p.tt.e)){const pay=await decide(ctx,p,'smugPay',{});
+      if(pay==='lira')p.lira-=2;else p.goods[pay]--;}
       g.smug=rollSum();log(ctx,`${p.name} deals with ${NS('smug')}, who moves to the ${PNAME[g.smug]}.`,p);
     }
   }
-  if(g.x&&g.trader===target&&(p.lira>=2||totalGoods(p)>0)){
-    if(await decide(ctx,p,'confirm',{key:'trader',title:NT('trader'),text:`Take ${TEA(1)} for ${L(2)} or 1 good?`,yes:`Take ${TEA(1)}`,no:'Ignore'})){
-      const pay=await decide(ctx,p,'smugPay',{who:'trader'});
-      if(pay==='lira')p.lira-=2;else p.goods[pay]--;
+  if(g.x&&g.trader===target&&(p.lira>=2||totalGoods(p)>0||(p.tt&&p.tt.e))){
+    if(await decide(ctx,p,'confirm',{key:'trader',title:NT('trader'),text:p.tt&&p.tt.e?`Take ${TEA(1)} for free (${W.encTile})?`:`Take ${TEA(1)} for ${L(2)} or 1 good?`,yes:`Take ${TEA(1)}`,no:'Ignore'})){
+      if(!(p.tt&&p.tt.e)){const pay=await decide(ctx,p,'smugPay',{who:'trader'});
+      if(pay==='lira')p.lira-=2;else p.goods[pay]--;}
       p.coffee++;g.trader=rollSum();log(ctx,`${p.name} buys ${TEA(1)} from ${NS('trader')}, who moves to the ${PNAME[g.trader]}.`,p);
     }
   }
@@ -181,7 +211,7 @@ async function rollWithRed(ctx,p,purpose,target){
   setRoll(ctx,p,d,purpose,target);
   log(ctx,`${p.name} rolls ${d[0]} + ${d[1]} = ${d[0]+d[1]}.`,p);
   await sleep(ctx,1100);
-  if(p.tiles.r){
+  if(p.tiles.r&&!ctx.noCards){
     const ch=await decide(ctx,p,'dice',{dice:d,purpose,target});
     if(ch==='four'){const i=d[0]<=d[1]?0:1;d[i]=4;setRoll(ctx,p,d,purpose,target,'Turned a die to 4');log(ctx,`${p.name} turns a die to 4: ${d[0]+d[1]}.`,p);await sleep(ctx,900);}
     else if(ch==='reroll'){d=roll2();setRoll(ctx,p,d,purpose,target,'Re-roll');log(ctx,`${p.name} re-rolls: ${d[0]} + ${d[1]} = ${d[0]+d[1]}.`,p);await sleep(ctx,1100);}
@@ -208,20 +238,20 @@ async function doAction(ctx,p,place){
     if(!await decide(ctx,p,'confirm',{key:'wain',title:PNAME[1],text:`Pay ${L(7)} to extend your ${W.cart} to ${cap(p)+1} of each good?${p.ext===2?` This completes it and earns a ${W.ruby}.`:''}`,yes:`Pay ${L(7)}`}))break;
     p.lira-=7;p.ext++;log(ctx,`${p.name} extends the ${W.cart} (${cap(p)} per good).`,p);
     if(p.ext===3&&g.wainRubies>0){g.wainRubies--;gainRuby(ctx,p,PNAME[1]);}
-    if(p.ext<3&&p.lira>=7&&hasCard(p,'dWain')&&await decide(ctx,p,'confirm',{key:'dWain',title:CARD_DEFS.dWain.name,text:`Play your ${W.card} to pay ${L(7)} for another extension?`,yes:'Play card'})){
+    if(p.ext<3&&p.lira>=7&&cardOK(ctx,p,'dWain')&&await decide(ctx,p,'confirm',{key:'dWain',title:CARD_DEFS.dWain.name,text:`Play your ${W.card} to pay ${L(7)} for another extension?`,yes:'Play card'})){
       useCard(g,p,'dWain');p.lira-=7;p.ext++;log(ctx,`${p.name} extends the ${W.cart} again (${cap(p)} per good).`,p);
       if(p.ext===3&&g.wainRubies>0){g.wainRubies--;gainRuby(ctx,p,PNAME[1]);}}
     break;}
   case 2:case 3:case 4:{
     const c={2:'r',3:'g',4:'y'}[place];const n=cap(p)-p.goods[c];p.goods[c]=cap(p);
     log(ctx,`${p.name} loads ${n} ${GNAME[c]}.`,p);
-    if(p.tiles.g&&p.lira>=2){const room=GOODS.filter(x=>p.goods[x]<cap(p));
+    if(p.tiles.g&&!ctx.noCards&&p.lira>=2){const room=GOODS.filter(x=>p.goods[x]<cap(p));
       if(room.length){const pick=await decide(ctx,p,'pickGood',{key:'green',title:`${GNAME.g} ${W.tile}`,text:`Pay ${L(2)} for 1 extra good?`,options:room,allowSkip:true});
         if(pick){p.lira-=2;p.goods[pick]++;log(ctx,`${p.name} buys 1 extra ${GNAME[pick]}.`,p);}}}
     break;}
   case 5:{
     await postAction(ctx,p);
-    if(hasCard(p,'dPost')&&await decide(ctx,p,'confirm',{key:'dPost',title:CARD_DEFS.dPost.name,text:`Play your ${W.card} to collect the mail again?`,yes:'Play card'})){useCard(g,p,'dPost');await postAction(ctx,p);}
+    if(cardOK(ctx,p,'dPost')&&await decide(ctx,p,'confirm',{key:'dPost',title:CARD_DEFS.dPost.name,text:`Play your ${W.card} to collect the mail again?`,yes:'Play card'})){useCard(g,p,'dPost');await postAction(ctx,p);}
     break;}
   case 6:{
     for(let k=1;k<=2;k++){let src='deck';if(g.discard.length)src=await decide(ctx,p,'cardSource',{top:g.discard[g.discard.length-1],n:k});
@@ -246,7 +276,7 @@ async function doAction(ctx,p,place){
   case 10:case 11:{
     const mk=place===10?g.large:g.small;const tile=mk[0];
     let any=false;
-    if(place===11&&hasCard(p,'smAny'))any=await decide(ctx,p,'confirm',{key:'smAny',title:CARD_DEFS.smAny.name,text:`Play your ${W.card} to sell any types of goods here?`,yes:'Play card',no:'Not now'});
+    if(place===11&&cardOK(ctx,p,'smAny'))any=await decide(ctx,p,'confirm',{key:'smAny',title:CARD_DEFS.smAny.name,text:`Play your ${W.card} to sell any types of goods here?`,yes:'Play card',no:'Not now'});
     if(any)useCard(g,p,'smAny');
     const sel=await decide(ctx,p,'sell',{tile,rev:REV[place],any,place});
     const n=GOODS.reduce((s,c)=>s+sel[c],0);
@@ -266,7 +296,7 @@ async function doAction(ctx,p,place){
       const req=sultanReq(g);
       if(!canPaySultan(p,req)){if(!times)note(ctx,p,`${NSC('king')} wants ${req.length} goods you don't have.`);break;}
       if(times===0){if(!await decide(ctx,p,'confirm',{key:'sultan',title:PNAME[13],text:`Deliver ${req.length} goods for a ${W.ruby}? <span class="chips">${req.map(chip).join('')}</span>`,yes:'Deliver'}))break;}
-      else{if(!hasCard(p,'dSultan')||!await decide(ctx,p,'confirm',{key:'dSultan',title:CARD_DEFS.dSultan.name,text:`Play your ${W.card} to deliver again? <span class="chips">${req.map(chip).join('')}</span>`,yes:'Play card'}))break;useCard(g,p,'dSultan');}
+      else{if(!cardOK(ctx,p,'dSultan')||!await decide(ctx,p,'confirm',{key:'dSultan',title:CARD_DEFS.dSultan.name,text:`Play your ${W.card} to deliver again? <span class="chips">${req.map(chip).join('')}</span>`,yes:'Play card'}))break;useCard(g,p,'dSultan');}
       req.forEach(x=>{if(x!=='*')p.goods[x]--;});
       for(const x of req)if(x==='*'){const opts=GOODS.filter(c=>p.goods[c]>0);const c=await decide(ctx,p,'pickGood',{key:'sultanAny',title:'Any good',text:'Pick the good to give for the open slot.',options:opts});p.goods[c]--;}
       g.sultanTaken++;gainRuby(ctx,p,PNAME[13]);times++;
@@ -290,7 +320,7 @@ async function doAction(ctx,p,place){
       const price=gemPrice(g);
       if(p.lira<price){if(!times)note(ctx,p,`A ${W.ruby} costs ${L(price)} here.`);break;}
       if(times===0){if(!await decide(ctx,p,'confirm',{key:'gem',title:PNAME[16],text:`Buy a ${W.ruby} for ${L(price)}?`,yes:`Pay ${L(price)}`}))break;}
-      else{if(!hasCard(p,'dGem')||!await decide(ctx,p,'confirm',{key:'dGem',title:CARD_DEFS.dGem.name,text:`Play your ${W.card} to buy another ${W.ruby} for ${L(price)}?`,yes:'Play card'}))break;useCard(g,p,'dGem');}
+      else{if(!cardOK(ctx,p,'dGem')||!await decide(ctx,p,'confirm',{key:'dGem',title:CARD_DEFS.dGem.name,text:`Play your ${W.card} to buy another ${W.ruby} for ${L(price)}?`,yes:'Play card'}))break;useCard(g,p,'dGem');}
       p.lira-=price;g.gemTaken++;gainRuby(ctx,p,PNAME[16]);times++;
     }
     break;}
@@ -300,21 +330,25 @@ async function doAction(ctx,p,place){
       const opts=[];
       if(!used.lira&&p.lira>=2)opts.push('lira');
       if(!used.good&&totalGoods(p)>0)opts.push('good');
-      if(!used.card&&p.cards.length)opts.push('card');
+      if(!used.card&&(p.cards.length||(p.guild&&p.guild.length)))opts.push('card');
       if(!opts.length)break;
       const ch=await decide(ctx,p,'roast',{opts,got});
       if(!ch)break;used[ch]=1;
       if(ch==='lira')p.lira-=2;
       else if(ch==='good'){const c=await decide(ctx,p,'pickGood',{key:'roastPay',title:PNAME[17],text:'Pay 1 good.',options:GOODS.filter(c=>p.goods[c]>0)});p.goods[c]--;}
-      else{const i=await decide(ctx,p,'discardCard',{title:`${PNAME[17]}: give up a ${W.card}`});const[c]=p.cards.splice(i,1);g.discard.push(c);}
+      else{let kind=p.cards.length?'bonus':'guild';if(p.cards.length&&p.guild&&p.guild.length)kind=await decide(ctx,p,'discardKind',{title:PNAME[17]});
+        if(kind==='guild'){const i=await decide(ctx,p,'discardGuild',{title:`${PNAME[17]}: give up a ${W.guildCard}`});const[c]=p.guild.splice(i,1);g.guildDiscard.push(c);}
+        else{const i=await decide(ctx,p,'discardCard',{title:`${PNAME[17]}: give up a ${W.card}`});const[c]=p.cards.splice(i,1);g.discard.push(c);}}
       p.coffee+=2;got+=2;
     }
     log(ctx,got?`${p.name} gets ${TEA(got)} at the ${PNAME[17]}.`:`${p.name} takes nothing at the ${PNAME[17]}.`,p);
     break;}
   case 18:{
-    p.coffee++;log(ctx,`${p.name} takes ${TEA(1)} at the ${PNAME[18]}.`,p);break;}
-  case 19:{
-    note(ctx,p,`The ${PNAME[19]} opens in a later update.`);break;}
+    p.coffee++;for(let k=0;k<2;k++){const c=drawGuild(g);if(c)p.guild.push(c);}
+    log(ctx,`${p.name} takes ${TEA(1)} and draws 2 ${W.guildCards}.`,p);
+    if(p.guild.length){const i=await decide(ctx,p,'discardGuild',{title:`${PNAME[18]}: discard 1 ${W.guildCard}`});const[c]=p.guild.splice(i,1);g.guildDiscard.push(c);}
+    break;}
+  case 19:await snugAction(ctx,p,1,0);break;
   case 20:{
     let times=0;
     for(;;){
@@ -322,16 +356,140 @@ async function doAction(ctx,p,place){
       const cost=chCost(g);
       if(p.coffee<cost){if(!times)note(ctx,p,`A ${W.ruby} costs ${TEA(cost)} here.`);break;}
       if(times===0){if(!await decide(ctx,p,'confirm',{key:'ch',title:PNAME[20],text:`Deliver ${TEA(cost)} for a ${W.ruby}?`,yes:`Deliver ${TEA(cost)}`}))break;}
-      else{if(!hasCard(p,'dCH')||!await decide(ctx,p,'confirm',{key:'dCH',title:CARD_DEFS.dCH.name,text:`Play your ${W.card} to deliver ${TEA(cost)} for another ${W.ruby}?`,yes:'Play card'}))break;useCard(g,p,'dCH');}
+      else{if(!cardOK(ctx,p,'dCH')||!await decide(ctx,p,'confirm',{key:'dCH',title:CARD_DEFS.dCH.name,text:`Play your ${W.card} to deliver ${TEA(cost)} for another ${W.ruby}?`,yes:'Play card'}))break;useCard(g,p,'dCH');}
       p.coffee-=cost;g.chTaken++;gainRuby(ctx,p,PNAME[20]);times++;
     }
     break;}
   }
 }
+/* ---------- Gutterlane Snug / Tavern ---------- */
+const BAK_PLACES=[13,16,20];
+function bakRubyPlaces(g){return BAK_PLACES.filter(pl=>pl===13?g.sultanTaken<g.sultanRubies:pl===16?g.gemTaken<g.gemRubies:g.chTaken<g.chRubies);}
+function canPayGoods(p,list){const n={r:0,g:0,y:0,b:0};list.forEach(c=>n[c]++);return GOODS.every(c=>p.goods[c]>=n[c]);}
+function snugOptions(g,p){
+  const o=[{k:'barrier',cost:2}];
+  if(!p.tt.m&&g.tt.m.length)o.push({k:'tm',cost:g.tt.m[0]});
+  if(!p.tt.e&&g.tt.e.length)o.push({k:'te',cost:g.tt.e[0]});
+  if(bakRubyPlaces(g).length&&canPayGoods(p,BAK_SIDES[g.bak]))o.push({k:'bak',cost:4});
+  return o;
+}
+async function snugAction(ctx,p,times,discount){
+  const g=ctx.G;let disc=discount,done=0;const used={};
+  while(done<times){
+    const opts=snugOptions(g,p).filter(o=>!used[o.k]&&p.coffee>=Math.max(0,o.cost-disc)).map(o=>({...o,pay:Math.max(0,o.cost-disc)}));
+    if(!opts.length){if(!done)note(ctx,p,`You need more ${W.coffee} at the ${PNAME[19]}.`);break;}
+    const k=await decide(ctx,p,'snug',{opts,n:done,times});
+    if(!k)break;
+    const o=opts.find(x=>x.k===k);p.coffee-=o.pay;disc=Math.max(0,disc-o.cost);used[k]=1;done++;
+    if(k==='tm'||k==='te'){const t=k==='tm'?'m':'e';g.tt[t].shift();p.tt[t]=1;log(ctx,`${p.name} pays ${TEA(o.pay)} for the ${t==='m'?W.moveTile:W.encTile}.`,p);}
+    else if(k==='bak'){
+      BAK_SIDES[g.bak].forEach(c=>p.goods[c]--);
+      const pl=await decide(ctx,p,'bakRuby',{options:bakRubyPlaces(g)});
+      if(pl===13)g.sultanTaken++;else if(pl===16)g.gemTaken++;else g.chTaken++;
+      g.bak^=1;log(ctx,`${p.name} pays ${TEA(o.pay)} and goods at the ${PNAME[19]}.`,p);gainRuby(ctx,p,PNAME[pl]);
+    }
+    else await placeBarrier(ctx,p,o.pay);
+  }
+}
+async function placeBarrier(ctx,p,paid){
+  const g=ctx.G;
+  const a=await decide(ctx,p,'policeTarget',{options:g.layout.filter(x=>x!==19),title:`Place the ${W.barrier}`,text:`Choose the place whose action you'll take. The ${W.barrier} goes on one of its edges, and only you may cross it. No encounters.`});
+  if(a==null){p.coffee+=paid;return;}
+  const b=await decide(ctx,p,'barrierSide',{options:neighbours(g,a),a});
+  g.barrier=[a,b];g.barrierOwner=p.i;
+  log(ctx,`${p.name} puts up the ${W.barrier} between the ${PNAME[a]} and the ${PNAME[b]}.`,p);
+  await doAction(ctx,p,a);
+}
+
+/* ---------- guild cards ---------- */
+function guildName(n){
+  if(T.guildNames&&T.guildNames[n])return T.guildNames[n];
+  return {1:`Free ${W.ext}`,2:`${GNAME.r} haul`,3:`${GNAME.g} haul`,4:`${GNAME.y} haul`,5:'Grand delivery',6:'Favours owed',7:'Home early',8:'Lucky find',9:'Big night',10:'Bulk sale',11:'Fine sale',12:'Errand',13:'Tribute',14:`${SHORT[14]} favour`,15:`${SHORT[15]} favour`,16:"Collector's deal",17:`Sack of ${W.coffee}`,18:'Guild contacts',19:'Backroom deal',20:`Half-price ${W.ruby}`}[n];
+}
+function guildText(n){
+  const fill=c=>`Fill your ${GNAME[c]} to capacity, then take up to 3 different goods (no ${W.coffee}).`;
+  return {1:`Take a free ${W.ext} from the ${PNAME[1]}.`,2:fill('r'),3:fill('g'),4:fill('y'),
+    5:`Take ${L(4)} and up to 4 different goods (no ${W.coffee}).`,
+    6:`Draw 3 ${W.cards}.`,
+    7:`Bring your ${W.merchant} and all your ${W.assistants} to the ${PNAME[7]}, then take another turn.`,
+    8:`Take 2 ${GNAME.r}, 2 ${GNAME.y} or 2 ${GNAME.g}. Then roll: 4–6 gives 1 ${GNAME.b}, 7–12 gives 3.`,
+    9:`Take the ${PNAME[9]} action and double what you win.`,
+    10:`Pay 1 ${GNAME.r}, 1 ${GNAME.g} and 1 ${GNAME.y} for ${L(15)}.`,
+    11:`Pay 1 ${GNAME.b}, 1 ${GNAME.r} and 1 ${GNAME.g} for ${L(20)}.`,
+    12:`Take any place's action. If you can, your ${W.family} then goes back to the ${PNAME[12]} (no reward).`,
+    13:`Pay any 6 goods (no ${W.coffee}) for the next ${W.ruby} at the ${PNAME[13]}.`,
+    14:`Take a ${W.tile} you don't own from the ${PNAME[14]}, paying just 1 of its good.`,
+    15:`Take a ${W.tile} you don't own from the ${PNAME[15]}, paying just 1 of its good.`,
+    16:`Pay ${L(15)} for the next ${W.ruby} at the ${PNAME[16]}, then take ${TEA(1)} for each ${W.ruby} you hold.`,
+    17:`Take ${TEA(5)}.`,
+    18:`Take ${TEA(1)} and draw 2 ${W.guildCards}.`,
+    19:`Take 1 or 2 ${PNAME[19]} actions, paying ${TEA(1)} less in total.`,
+    20:`Take the next ${W.ruby} at the ${PNAME[20]} for half its price, rounded up.`}[n];
+}
+const GUILD_VAL={1:6,2:5,3:5,4:5,5:8,6:6,7:5,8:6,9:5,10:6,11:7,12:7,13:9,14:7,15:7,16:9,17:7,18:5,19:6,20:9};
+function mosqueGuildOpts(g,p,pl){return MOSQUE[pl].filter(c=>!p.tiles[c]&&g.mosque[c].length&&p.goods[c]>=1);}
+function guildPlayable(g,p,n){
+  switch(n){
+  case 1:return p.ext<3;
+  case 10:return p.goods.r>0&&p.goods.g>0&&p.goods.y>0;
+  case 11:return p.goods.b>0&&p.goods.r>0&&p.goods.g>0;
+  case 13:return totalGoods(p)>=6&&g.sultanTaken<g.sultanRubies;
+  case 14:case 15:return mosqueGuildOpts(g,p,n).length>0;
+  case 16:return p.lira>=15&&g.gemTaken<g.gemRubies;
+  case 19:return snugOptions(g,p).some(o=>p.coffee>=Math.max(0,o.cost-1));
+  case 20:return g.chTaken<g.chRubies&&p.coffee>=Math.ceil(chCost(g)/2);
+  default:return true;
+  }
+}
+async function takeDifferentGoods(ctx,p,max,title){
+  const got=[];
+  for(let k=0;k<max;k++){
+    const room=GOODS.filter(c=>!got.includes(c)&&p.goods[c]<cap(p));if(!room.length)break;
+    const c=await decide(ctx,p,'pickGood',{key:'guildGood',title,text:`Take a different good (${k+1} of up to ${max}).`,options:room,allowSkip:true});
+    if(!c)break;p.goods[c]++;got.push(c);
+  }
+  return got;
+}
+async function playGuild(ctx,p,n){
+  const g=ctx.G;const i=p.guild.indexOf(n);if(i<0)return null;
+  p.guild.splice(i,1);g.guildDiscard.push(n);
+  log(ctx,`${p.name} plays the ${W.guildCard} “${guildName(n)}”.`,p);
+  const gc={...ctx,noCards:true};
+  switch(n){
+  case 1:p.ext++;log(ctx,`${p.name} extends the ${W.cart} (${cap(p)} per good).`,p);if(p.ext===3&&g.wainRubies>0){g.wainRubies--;gainRuby(ctx,p,PNAME[1]);}break;
+  case 2:case 3:case 4:{const c={2:'r',3:'g',4:'y'}[n];p.goods[c]=cap(p);const got=await takeDifferentGoods(gc,p,3,guildName(n));log(ctx,`${p.name} fills up on ${GNAME[c]}${got.length?` and takes ${got.map(x=>GNAME[x]).join(', ')}`:''}.`,p);break;}
+  case 5:{p.lira+=4;const got=GOODS.filter(c=>p.goods[c]<cap(p));got.forEach(c=>p.goods[c]++);log(ctx,`${p.name} takes ${L(4)}${got.length?` and ${got.map(x=>GNAME[x]).join(', ')}`:''}.`,p);break;}
+  case 6:{for(let k=0;k<3;k++){const c=drawCard(g);if(c)p.cards.push(c);}log(ctx,`${p.name} draws 3 ${W.cards}.`,p);break;}
+  case 7:{let k=0;for(const x in p.assist)k+=p.assist[x];p.stack+=k;p.assist={};p.pos=7;log(ctx,`${p.name} heads to the ${PNAME[7]} with every ${W.assistant}, and takes another turn.`,p);return 'again';}
+  case 8:{const c=await decide(ctx,p,'pickGood',{key:'guild8',title:guildName(8),text:'Take 2 of one good.',options:['r','y','g']});
+    p.goods[c]=Math.min(cap(p),p.goods[c]+2);const d=roll2();setRoll(ctx,p,d,'guild8',null);const s2=d[0]+d[1];const blue=s2>=7?3:s2>=4?1:0;const add=Math.min(blue,cap(p)-p.goods.b);p.goods.b+=add;
+    log(ctx,`${p.name} takes 2 ${GNAME[c]}, rolls ${s2} and gains ${add} ${GNAME.b}.`,p);await sleep(ctx,900);break;}
+  case 9:{const t=await decide(ctx,p,'pickNumber',{});const d=roll2();setRoll(ctx,p,d,'tea',t,'Winnings doubled');const s2=d[0]+d[1];const gain=2*(s2>=t?t:2);p.lira+=gain;
+    log(ctx,`${p.name} announces ${t}, rolls ${s2} and takes ${L(gain)}.`,p);await sleep(ctx,900);break;}
+  case 10:p.goods.r--;p.goods.g--;p.goods.y--;p.lira+=15;log(ctx,`${p.name} sells 3 goods for ${L(15)}.`,p);break;
+  case 11:p.goods.b--;p.goods.r--;p.goods.g--;p.lira+=20;log(ctx,`${p.name} sells 3 goods for ${L(20)}.`,p);break;
+  case 12:{const t=await decide(gc,p,'policeTarget',{options:g.layout.filter(x=>x!==12),title:guildName(12),text:"Choose any place and take its action. No assistant needed and no encounters."});
+    if(t!=null){log(ctx,`${p.name} takes the ${PNAME[t]} action.`,p);await doAction(gc,p,t);}
+    if(p.family!==12){p.family=12;log(ctx,`${p.name}'s ${W.family} goes back to the ${PNAME[12]}.`,p);}break;}
+  case 13:{const sel=await decide(ctx,p,'payGoods',{n:6,title:guildName(13)});GOODS.forEach(c=>p.goods[c]-=sel[c]);g.sultanTaken++;gainRuby(ctx,p,PNAME[13]);break;}
+  case 14:case 15:{const c=await decide(ctx,p,'mosqueColor',{options:mosqueGuildOpts(g,p,n),cheap:true});const cols=MOSQUE[n];
+    g.mosque[c].shift();p.goods[c]--;p.tiles[c]=1;log(ctx,`${p.name} claims the ${GNAME[c]} ${W.tile}.`,p);
+    if(c==='b'){p.stack++;log(ctx,`${p.name} gains a 5th ${W.assistant}.`,p);}
+    if(cols.every(x=>p.tiles[x])&&g.mosqueRubies[n]>0){g.mosqueRubies[n]--;gainRuby(ctx,p,PNAME[n]);}break;}
+  case 16:p.lira-=15;g.gemTaken++;gainRuby(ctx,p,PNAME[16]);p.coffee+=p.rubies;log(ctx,`${p.name} takes ${TEA(p.rubies)}.`,p);break;
+  case 17:p.coffee+=5;log(ctx,`${p.name} takes ${TEA(5)}.`,p);break;
+  case 18:{p.coffee++;for(let k=0;k<2;k++){const c=drawGuild(g);if(c)p.guild.push(c);}log(ctx,`${p.name} takes ${TEA(1)} and draws 2 ${W.guildCards}.`,p);break;}
+  case 19:await snugAction(gc,p,2,1);break;
+  case 20:{const cost=Math.ceil(chCost(g)/2);p.coffee-=cost;g.chTaken++;log(ctx,`${p.name} pays ${TEA(cost)}.`,p);gainRuby(ctx,p,PNAME[20]);break;}
+  }
+  return 'done';
+}
+
 /* expansion bonus cards that are played on your turn (shared by players and the AI) */
 async function playExpCard(ctx,p,t){
   const g=ctx.G;
   if(t==='tea2'){useCard(g,p,t);p.coffee+=2;log(ctx,`${p.name} plays “${CARD_DEFS[t].name}” for ${TEA(2)}.`,p);return true;}
+  if(t==='gcard'){if(p.coffee<2)return false;useCard(g,p,t);p.coffee-=2;const c=drawGuild(g);if(c)p.guild.push(c);log(ctx,`${p.name} plays “${CARD_DEFS[t].name}” and draws a ${W.guildCard}.`,p);return true;}
   if(t==='tea8'){if(p.coffee<1)return false;useCard(g,p,t);p.coffee--;p.lira+=8;log(ctx,`${p.name} plays “${CARD_DEFS[t].name}”: ${TEA(1)} for ${L(8)}.`,p);return true;}
   if(t==='diceGift'){useCard(g,p,t);const d=roll2();setRoll(ctx,p,d,'gift',null);const got=[];
     d.forEach(v=>{const r=DICE_GIFT[v];if(r==='lira'){p.lira+=2;got.push(L(2));}else if(r==='coffee'){p.coffee++;got.push(TEA(1));}else if(p.goods[r]<cap(p)){p.goods[r]++;got.push(GNAME[r]);}});
@@ -361,7 +519,7 @@ function need(g,p){
 }
 const bestGood=(g,p,opts)=>{const s=need(g,p);return opts.slice().sort((a,b)=>s[b]-s[a]||p.goods[a]-p.goods[b])[0];};
 const spareGood=(g,p,opts)=>{const s=need(g,p);return opts.slice().sort((a,b)=>(p.goods[b]-p.goods[a])||(s[a]-s[b]))[0];};
-const CARD_VAL={lira5:9,good:8,family:6,move34:5,dGem:4,dSultan:4,recall:4,dPost:4,smAny:3,stay:2,tea2:6,tea8:6,diceGift:6,swap3:2,six:3,corner:4,dWain:3,dCH:4};
+const CARD_VAL={gcard:5,lira5:9,good:8,family:6,move34:5,dGem:4,dSultan:4,recall:4,dPost:4,smAny:3,stay:2,tea2:6,tea8:6,diceGift:6,swap3:2,six:3,corner:4,dWain:3,dCH:4};
 const worstCard=p=>{let bi=0;p.cards.forEach((c,i)=>{if(CARD_VAL[c]<CARD_VAL[p.cards[bi]])bi=i;});return bi;};
 
 async function aiDecide(ctx,p,kind,d){
@@ -406,6 +564,17 @@ async function aiDecide(ctx,p,kind,d){
     if(d.purpose==='tea')return s<d.target&&six>=d.target;
     const br=x=>x>=11?3:x>=9?2:x>=7?1:0;return br(six)>br(s);}
   case 'swapGive':case 'swapTake':return null;
+  case 'discardGuild':{let bi=0,bv=1e9;p.guild.forEach((c,i)=>{const v=GUILD_VAL[c]+(guildPlayable(g,p,c)?3:0);if(v<bv){bv=v;bi=i;}});return bi;}
+  case 'discardKind':return p.cards.length&&CARD_VAL[p.cards[worstCard(p)]]<=4?'bonus':(p.guild.length?'guild':'bonus');
+  case 'payGoods':{const sel={r:0,g:0,y:0,b:0};let left=d.n;while(left>0){const c=GOODS.slice().sort((a,b)=>(p.goods[b]-sel[b])-(p.goods[a]-sel[a])||(a==='b')-(b==='b'))[0];sel[c]++;left--;}return sel;}
+  case 'snug':{const has=k=>d.opts.some(o=>o.k===k);
+    if(has('bak'))return 'bak';
+    if(has('tm')&&p.coffee>=d.opts.find(o=>o.k==='tm').pay+1)return 'tm';
+    if(has('te')&&(d.opts.find(o=>o.k==='te').pay<=2))return 'te';
+    if(has('barrier')&&(d.n>0||g.chTaken>=g.chRubies||p.coffee>=chCost(g)+2))return 'barrier';
+    return d.n>0?null:(d.opts[0]&&d.opts[0].k==='barrier'&&p.coffee>=4?'barrier':null);}
+  case 'barrierSide':{const opp=g.players.filter(q=>q!==p).map(q=>q.pos);return d.options.find(x=>opp.includes(x))||d.options[0];}
+  case 'bakRuby':return [16,13,20].find(x=>d.options.includes(x));
   case 'smugPay':{if(p.lira>=6)return 'lira';const opts=GOODS.filter(c=>p.goods[c]>0);if(!opts.length)return 'lira';return spareGood(g,p,opts);}
   }
 }
@@ -423,6 +592,7 @@ function evalPlayer(g,p){
   if(g.gemTaken<g.gemRubies){const f=Math.min(1,p.lira/gemPrice(g));v+=10*f*f;}
   [14,15].forEach(pl=>MOSQUE[pl].forEach(c=>{if(!p.tiles[c]&&g.mosque[c].length){const f=Math.min(1,p.goods[c]/g.mosque[c][0]);v+=6*f*f;}}));
   if(p.ext<3)v+=Math.min(1,p.lira/7)*4;
+  if(g.x){v+=(p.guild?p.guild.length:0)*4+(p.tt&&p.tt.m?10:0)+(p.tt&&p.tt.e?6:0);}
   if(g.x){if(g.chTaken<g.chRubies){const f=Math.min(1,p.coffee/chCost(g));v+=Math.min(p.coffee,chCost(g))*2+22*f*f;}else v+=p.coffee;}
   return v;
 }
@@ -433,7 +603,7 @@ async function simulate(g,pi,target,mode){
   return evalPlayer(C,p);
 }
 async function rankMoves(g,p,modes){
-  const cands=[];modes.forEach(m=>reachable(g,p,m).forEach(t=>cands.push({t,mode:m,pen:m==='normal'?0:5})));
+  const cands=[];modes.forEach(m=>reachable(g,p,m).forEach(t=>cands.push({t,mode:m,pen:m==='normal'||m==='line'?0:5})));
   for(const c of cands){const runs=[8,9,12].includes(c.t)?3:1;let v=0;for(let r=0;r<runs;r++)v+=await simulate(g,p.i,c.t,c.mode);c.v=v/runs-c.pen+Math.random()*.6;}
   return cands.sort((a,b)=>b.v-a.v);
 }
@@ -446,6 +616,7 @@ async function aiTurn(ctx){
   if(g.x){
     while(hasCard(p,'tea2'))await playExpCard(ctx,p,'tea2');
     if(hasCard(p,'diceGift'))await playExpCard(ctx,p,'diceGift');
+    if(hasCard(p,'gcard')&&p.coffee>=2&&(g.chTaken>=g.chRubies||p.coffee-2>=chCost(g)||p.coffee>=6))await playExpCard(ctx,p,'gcard');
     if(hasCard(p,'tea8')&&p.coffee>0&&(g.chTaken>=g.chRubies||p.coffee>chCost(g)||p.coffee<2))await playExpCard(ctx,p,'tea8');
   }
   const out=Object.keys(p.assist).map(Number);
@@ -454,10 +625,22 @@ async function aiTurn(ctx){
     if(p.tiles.y&&p.lira>=2&&!p.yellowUsed){p.lira-=2;p.yellowUsed=true;recallFrom(p,far);log(ctx,`${p.name} pays ${L(2)} to bring an ${W.assistant} home.`,p);}
     else if(hasCard(p,'recall')){useCard(g,p,'recall');recallFrom(p,far);log(ctx,`${p.name} plays “${CARD_DEFS.recall.name}”.`,p);}
   }
-  const modes=['normal'];if(hasCard(p,'move34'))modes.push('move34');if(hasCard(p,'corner'))modes.push('corner');
+  const modes=['normal'];if(hasCard(p,'move34'))modes.push('move34');if(hasCard(p,'corner'))modes.push('corner');if(p.tt&&p.tt.m)modes.push('line');
   const best=(await rankMoves(g,p,modes))[0];
   checkGen(ctx);
-  if(best.mode!=='normal'){useCard(g,p,best.mode);log(ctx,`${p.name} plays “${CARD_DEFS[best.mode].name}”.`,p);}
+  if(g.x&&p.guild&&p.guild.length){
+    let gb=null,gv=-1e9;
+    for(const n of [...new Set(p.guild)]){
+      if(!guildPlayable(g,p,n))continue;
+      const C=clone(g),q=C.players[p.i];const r=await playGuild({G:C,sim:true,depth:1},q,n);
+      let v=evalPlayer(C,q);if(r==='again'){const nx=(await rankMoves(C,q,['normal']))[0];if(nx)v=nx.v;}
+      if(v>gv){gv=v;gb=n;}
+    }
+    checkGen(ctx);
+    if(gb!=null&&gv>best.v+3){const r=await playGuild(ctx,p,gb);checkGen(ctx);render();await sleep(ctx,700);if(r==='again')await aiTurn(ctx);return;}
+  }
+  if(best.mode==='line')log(ctx,`${p.name} uses the ${W.moveTile}.`,p);
+  else if(best.mode!=='normal'){useCard(g,p,best.mode);log(ctx,`${p.name} plays “${CARD_DEFS[best.mode].name}”.`,p);}
   UI.sel=best.t;render();await sleep(ctx,550);
   await resolveMove(ctx,best.t,best.mode);
 }
@@ -496,6 +679,24 @@ function sellSheet(p,d){
     draw();w.hidden=false;
   });
 }
+function payGoodsSheet(p,d){
+  return new Promise(res=>{
+    const w=$('#sheetWrap'),s=$('#sheet');s.className='';const sel={r:0,g:0,y:0,b:0};let left=d.n;
+    GOODS.slice().sort((a,b)=>p.goods[b]-p.goods[a]).forEach(c=>{const k=Math.min(left,p.goods[c]);sel[c]=k;left-=k;});
+    const tot=()=>GOODS.reduce((a,c)=>a+sel[c],0);
+    const draw=()=>{const n=tot();
+      s.innerHTML=`<h2>${d.title}</h2><div class="sbody"><p>Choose ${d.n} goods to pay.</p>
+      ${GOODS.map(c=>`<div class="srow"><span>${chip(c)} ${GNAME[c]} <small class="muted">have ${p.goods[c]}</small></span>
+      <button class="btn" data-c="${c}" data-d="-1" ${sel[c]<=0?'disabled':''}>−</button><output>${sel[c]}</output>
+      <button class="btn" data-c="${c}" data-d="1" ${sel[c]>=p.goods[c]||n>=d.n?'disabled':''}>+</button></div>`).join('')}
+      <div class="total">${n} of ${d.n}</div></div><div class="sbtns"><button class="btn primary" data-act="ok" ${n!==d.n?'disabled':''}>Pay</button></div>`;
+      s.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{sel[b.dataset.c]+=+b.dataset.d;draw();});
+      s.querySelector('[data-act=ok]').onclick=()=>{w.hidden=true;res({...sel});};
+    };
+    draw();w.hidden=false;
+  });
+}
+const TT_TEXT=t=>t==='m'?`Instead of moving 1 or 2 places, move any number of places in a straight line (never through the ${W.barrier}).`:`${NSC('gov')}, ${NS('smug')} and ${NS('trader')} no longer charge you anything.`;
 const dieFace=n=>`<span class="die" data-v="${n}">${[...Array(9)].map((_,i)=>`<i class="${PIPS[n].includes(i)?'on':''}"></i>`).join('')}</span>`;
 const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 async function humanDecide(ctx,p,kind,d){
@@ -510,8 +711,16 @@ async function humanDecide(ctx,p,kind,d){
   case 'sell':return sellSheet(p,d);
   case 'cardSource':return sheet(PNAME[6],`<p>Take ${W.card} ${d.n} of 2.</p>`,[{label:'Draw from the pile',value:'deck',primary:true},{label:`Take “${CARD_DEFS[d.top].name}” from the discards`,value:'discard'}]);
   case 'discardCard':return sheet(d.title||'Discard a card',`<p>Choose a ${W.card} to discard.</p>`,p.cards.map((c,i)=>({label:`${CARD_DEFS[c].name} <small>${CARD_DEFS[c].text}</small>`,value:i})));
-  case 'mosqueColor':return sheet(`Claim a ${W.tile}`,'<p>Pay 1 of the shown goods to take the tile.</p>',[...d.options.map(c=>({label:`${chip(c)} ${GNAME[c]} tile <small>needs ${G.mosque[c][0]} · ${TILE_ABIL[c]}</small>`,value:c})),{label:'Skip',value:null}]);
-  case 'policeTarget':return sheet(PNAME[12],`<p>Send your ${W.family} to any place and take that action there. No ${W.assistant} needed and no encounters.</p>`,[...d.options.map(pl=>({label:PNAME[pl],value:pl})),{label:'Skip',value:null}],{grid:true});
+  case 'mosqueColor':return sheet(`Claim a ${W.tile}`,'<p>Pay 1 of the shown goods to take the tile.</p>',[...d.options.map(c=>({label:`${chip(c)} ${GNAME[c]} tile <small>${d.cheap?'':`needs ${G.mosque[c][0]} · `}${TILE_ABIL[c]}</small>`,value:c})),...(d.cheap?[]:[{label:'Skip',value:null}])]);
+  case 'discardGuild':return sheet(d.title||`Discard a ${W.guildCard}`,`<p>Choose a ${W.guildCard} to discard.</p>`,p.guild.map((c,i)=>({label:`${guildName(c)} <small>${guildText(c)}</small>`,value:i})));
+  case 'discardKind':return sheet(d.title,`<p>Give up a ${W.card} or a ${W.guildCard}?</p>`,[{label:`A ${W.card}`,value:'bonus',primary:true},{label:`A ${W.guildCard}`,value:'guild'}]);
+  case 'payGoods':return payGoodsSheet(p,d);
+  case 'snug':{const lab={barrier:`Put up the ${W.barrier} and take a nearby action`,tm:`Buy the ${W.moveTile}`,te:`Buy the ${W.encTile}`,bak:`Pay ${BAK_SIDES[G.bak].map(chip).join('')} for a ${W.ruby}`};
+    const sub={barrier:'Only you may cross it',tm:TT_TEXT('m'),te:TT_TEXT('e'),bak:'From the '+bakRubyPlaces(G).map(x=>SHORT[x]).join(', ')};
+    return sheet(PNAME[19],`<p>${d.times>1?`Action ${d.n+1} of up to ${d.times}. `:''}You have ${TEA(p.coffee)}.</p>`,[...d.opts.map(o=>({label:`<b>${lab[o.k]}</b> <span class="cost">${teaIc()}${o.pay}</span><small>${sub[o.k]}</small>`,value:o.k,cls:'opt'})),{label:d.n?'Done':'Skip',value:null}]);}
+  case 'barrierSide':return sheet(`Place the ${W.barrier}`,`<p>Which edge of the ${PNAME[d.a]} does the ${W.barrier} go on? Others can't cross between those two places.</p>`,d.options.map(x=>({label:`Between it and the ${PNAME[x]}`,value:x})));
+  case 'bakRuby':return sheet(`Take a ${W.ruby}`,`<p>Take the next ${W.ruby} from:</p>`,d.options.map(x=>({label:PNAME[x],value:x})));
+  case 'policeTarget':return sheet(d.title||PNAME[12],`<p>${d.text||`Send your ${W.family} to any place and take that action there. No ${W.assistant} needed and no encounters.`}</p>`,[...d.options.map(pl=>({label:PNAME[pl],value:pl})),{label:'Skip',value:null}],{grid:true});
   case 'familyReward':return sheet(`${W.family[0].toUpperCase()+W.family.slice(1)} caught`,`<p>You sent ${d.name}'s ${W.family} to the ${PNAME[12]}. Choose your reward.</p>`,[{label:`Take ${L(3)}`,value:'lira',primary:true},{label:`Draw a ${W.card}`,value:'card'}]);
   case 'govPay':return sheet(`Pay ${NS('gov')}`,`<p>Pay ${L(2)} or discard a ${W.card}.</p>`,[...(p.lira>=2?[{label:`Pay ${L(2)}`,value:'lira',primary:true}]:[]),...p.cards.map((c,i)=>({label:'Discard “'+CARD_DEFS[c].name+'”',value:i}))]);
   case 'roast':{const lab={lira:`Pay ${L(2)}`,good:'Pay 1 good',card:`Give up a ${W.card}`};
@@ -542,6 +751,7 @@ async function cardTap(pi,i){
   if(t==='recall'){playable=moving&&Object.keys(p.assist).length>0;if(!moving)hint='Only before you move.';else if(!playable)hint=`All your ${W.assistants} are already with you.`;}
   if(['dSultan','dPost','dGem','smAny','six','dWain','dCH'].includes(t))hint=t==='six'?'You will be offered this card when you roll the dice.':'You will be offered this card during that action.';
   if(t==='tea2'||t==='diceGift')playable=canAct;
+  if(t==='gcard'){playable=canAct&&p.coffee>=2;if(canAct&&p.coffee<2)hint=`You need ${TEA(2)}.`;}
   if(t==='tea8'){playable=canAct&&p.coffee>0;if(canAct&&!p.coffee)hint=`You need ${TEA(1)}.`;}
   if(t==='swap3'){playable=canAct&&(totalGoods(p)+p.coffee)>0;}
   if(t==='corner'){playable=moving;label=UI.mode===t?'Cancel':'Use for this move';if(!moving)hint='Only before you move.';}
@@ -554,10 +764,22 @@ async function cardTap(pi,i){
     else if(t==='good'){const room=GOODS.filter(c=>p.goods[c]<cap(p));if(!room.length){toast(`Your ${W.cart} is full.`);return;}
       const c=await humanDecide(ctx,p,'pickGood',{title:def.name,text:'Choose a good.',options:room,allowSkip:true});if(c){useCard(G,p,t);p.goods[c]++;log(ctx,`${p.name} plays “${def.name}” for ${GNAME[c]}.`,p);}}
     else if(t==='family'){useCard(G,p,t);p.family=12;const r=await humanDecide(ctx,p,'familyReward',{name:'your own'});if(r==='card'){const c=drawCard(G);if(c)p.cards.push(c);}else p.lira+=3;log(ctx,`${p.name} calls the ${W.family} home.`,p);}
-    else if(['tea2','tea8','diceGift','swap3'].includes(t)){await playExpCard(ctx,p,t);}
+    else if(['tea2','gcard','tea8','diceGift','swap3'].includes(t)){await playExpCard(ctx,p,t);}
     else if(t==='stay'||t==='move34'||t==='corner'){UI.mode=UI.mode===t?'normal':t;UI.sel=null;UI.sugg=null;}
     else if(t==='recall'){const pl=await pickAssistant(p);if(pl!=null){useCard(G,p,t);recallFrom(p,pl);log(ctx,`${p.name} plays “${def.name}”.`,p);}}
   }finally{UI.busy=false;render();}
+}
+async function guildTap(pi,i){
+  const p=G.players[pi];if(!p||UI.busy)return;
+  if(ON.code?ownerOf(p)!==ME:p.ai)return;
+  const n=p.guild[i];const myTurn=p===cur(G)&&(!ON.code||ON.driving);const moving=myTurn&&UI.phase==='move';
+  const ok=guildPlayable(G,p,n);
+  const hint=!myTurn?'You can play this on your turn.':!moving?'Play it before you move: it replaces your whole turn.':!ok?"You can't carry it out right now.":'Playing it replaces your whole turn: no move and no encounters.';
+  UI.busy=true;
+  let go=false;
+  try{go=await sheet(guildName(n),`<p>${guildText(n)}</p><p class="muted">${hint}</p>`,moving&&ok?[{label:'Play instead of moving',value:true,primary:true},{label:'Close',value:false}]:[{label:'Close',value:false}]);}
+  finally{UI.busy=false;render();}
+  if(go&&pendingMove){$('#moveBar').hidden=true;document.body.classList.remove('has-movebar');pendingMove({guild:n});}
 }
 function pickAssistant(p){const out=Object.keys(p.assist).map(Number);return sheet(`Bring an ${W.assistant} home`,`<p>Choose where to collect one ${W.assistant} from.</p>`,[...out.map(pl=>({label:PNAME[pl],value:pl})),{label:'Cancel',value:null}]);}
 async function yellowTap(){
@@ -582,9 +804,15 @@ async function playTurn(ctx){
   for(;;){
     UI.phase='move';UI.sel=null;UI.sugg=null;render();
     const target=await new Promise(r=>pendingMove=r);pendingMove=null;checkGen(ctx);
-    const mode=UI.mode;const p=cur(G);if(mode!=='normal')useCard(G,p,mode);
+    if(target&&typeof target==='object'&&target.guild){
+      UI.phase='busy';UI.mode='normal';UI.sel=null;UI.sugg=null;render();
+      const r=await playGuild(ctx,cur(G),target.guild);checkGen(ctx);
+      if(r==='again'){render();continue;}
+    }else{
+    const mode=UI.mode;const p=cur(G);if(mode!=='normal'&&mode!=='line')useCard(G,p,mode);
     UI.phase='busy';UI.sel=null;UI.sugg=null;render();
     await resolveMove(ctx,target,mode);checkGen(ctx);
+    }
     UI.phase='post';UI.sel=null;render();
     const r=await new Promise(r=>pendingEnd=r);pendingEnd=null;checkGen(ctx);
     if(r==='undo'&&RNG_N===TURN.rng){FX.quiet=true;restoreInPlace(G,TURN.snap);UI.mode='normal';toast('Move undone');continue;}
@@ -610,7 +838,7 @@ async function gameLoop(){
 }
 function save(){if(ON.code)return;try{localStorage.setItem(STORE,JSON.stringify(G));}catch(e){}}
 function startGame(cfg){leaveOnline();showScreen('table');GEN++;pendingMove=pendingEnd=null;G=newGame(cfg);UI={phase:'idle',sel:null,mode:'normal',busy:false};$('#sheetWrap').hidden=true;render();gameLoop();}
-function resumeGame(saved){leaveOnline();showScreen('table');GEN++;pendingMove=pendingEnd=null;G=saved;UI={phase:'idle',sel:null,mode:'normal',busy:false};$('#sheetWrap').hidden=true;render();if(G.over){UI.phase='over';render();}else gameLoop();}
+function resumeGame(saved){leaveOnline();showScreen('table');GEN++;pendingMove=pendingEnd=null;G=upgradeState(saved);UI={phase:'idle',sel:null,mode:'normal',busy:false};$('#sheetWrap').hidden=true;render();if(G.over){UI.phase='over';render();}else gameLoop();}
 
 /* ---------- sound (synthesised, no files) ---------- */
 const SND={ctx:null,on:lsGet('istanbul-sound')!=='off'};
@@ -682,10 +910,11 @@ const WALK={};
 const STEP_MS=360;
 function gridPath(a,z){
   const at=pl=>rc(G,pl),pos=(r,c)=>G.layout[r*COLS(G)+c];
-  let [r,c]=at(a);const [r2,c2]=at(z);const out=[a];
-  while(r!==r2){r+=Math.sign(r2-r);out.push(pos(r,c));}
-  while(c!==c2){c+=Math.sign(c2-c);out.push(pos(r,c));}
-  return out;
+  const walk=rowsFirst=>{let [r,c]=at(a);const [r2,c2]=at(z);const out=[a];
+    const rows=()=>{while(r!==r2){r+=Math.sign(r2-r);out.push(pos(r,c));}},cols=()=>{while(c!==c2){c+=Math.sign(c2-c);out.push(pos(r,c));}};
+    if(rowsFirst){rows();cols();}else{cols();rows();}return out;};
+  const crosses=pth=>G.barrier&&pth.some((x,i)=>i&&edgeBlocked(G,null,pth[i-1],x));
+  const p1=walk(true);return crosses(p1)?walk(false):p1;
 }
 function walkToken(board,el,pts,walking){
   const k=el.dataset.k;
@@ -750,7 +979,8 @@ function hintFor(p,pl,mode){
   if(pl!==7&&!(mode!=='stay'&&p.assist[pl])&&p.stack<=0)return{t:`No ${W.assistant}`,k:'bad'};
   if(pl!==7){const n=g.players.filter(q=>q!==p&&q.pos===pl).length+g.neutrals.filter(x=>x.pos===pl).length;if(p.lira<2*n)return{t:`Can't pay ${2*n}${CS()}`,k:'bad'};}
   const fam=pl!==12&&g.players.some(q=>q!==p&&q.family===pl)?' +catch':'';
-  const H=(t,k)=>({t:t+fam,k:k||(fam?'good':'')});
+  const back=pl!==7&&mode!=='stay'&&p.assist[pl]?` +${ICON('apprentice')?`<img class="gi" src="${ICON('apprentice')}" alt="${W.assistant}">`:W.assistant}`:'';
+  const H=(t,k)=>({t:t+fam+back,k:k||(fam||back?'good':'')});
   switch(pl){
   case 1:return p.ext>=3?H('Fully extended','meh'):p.lira>=7?H(p.ext===2?`◆ Extend`:'Extend cart',p.ext===2?'ruby':'good'):H(`Need ${7-p.lira}${CS()} more`,'meh');
   case 2:case 3:case 4:{const c={2:'r',3:'g',4:'y'}[pl];const n=cap(p)-p.goods[c];return n?H(`+${n} ${chip(c)}`,'good'):H('Already full','meh');}
@@ -768,8 +998,8 @@ function hintFor(p,pl,mode){
     const c=left.sort((a,b)=>(g.mosque[a][0]-p.goods[a])-(g.mosque[b][0]-p.goods[b]))[0];return H(`Need ${g.mosque[c][0]} ${chip(c)}`,'meh');}
   case 16:{if(g.gemTaken>=g.gemRubies)return H('Sold out','meh');const pr=gemPrice(g);return p.lira>=pr?H(`◆ ${pr}${CS()}`,'ruby'):H(`Need ${pr-p.lira}${CS()} more`,'meh');}
   case 17:{const n=(p.lira>=2?1:0)+(totalGoods(p)?1:0)+(p.cards.length?1:0);return n?H(`up to +${2*n}${teaIc()}`,'good'):H('Nothing to pay','meh');}
-  case 18:return H(`+1${teaIc()}`,'good');
-  case 19:return H('Opens later','meh');
+  case 18:return H(`+1${teaIc()} +guild`,'good');
+  case 19:{const o=snugOptions(g,p).filter(x=>p.coffee>=x.cost);if(o.some(x=>x.k==='bak'))return H(`◆ Bribe`,'ruby');if(o.some(x=>x.k==='tm'||x.k==='te'))return H(W.ttile,'good');if(o.length)return H(W.barrier[0].toUpperCase()+W.barrier.slice(1),'good');return H(`Need ${W.coffee}`,'meh');}
   case 20:{if(g.chTaken>=g.chRubies)return H('Sold out','meh');const c=chCost(g);return p.coffee>=c?H(`◆ ${c}${teaIc()}`,'ruby'):H(`Need ${c-p.coffee}${teaIc()} more`,'meh');}
   }
   return H('');
@@ -798,6 +1028,8 @@ function rulesSheet(){
     <div class="rplaces">${GOODS.map(c=>`<div><b>${chip(c)} ${GNAME[c]}</b><span>${TILE_ABIL[c]}</span></div>`).join('')}</div>
     <h4>${W.cards[0].toUpperCase()+W.cards.slice(1)}</h4>
     <div class="rplaces">${Object.entries(CARD_DEFS).filter(([k])=>X||!EXP_CARDS[k]).map(([,d])=>`<div><b>${d.name} ×${d.n}</b><span>${d.text}</span></div>`).join('')}</div>
+    ${X?`<h4>${W.guildCards[0].toUpperCase()+W.guildCards.slice(1)}</h4><p>Play one on your turn instead of moving. It replaces your whole turn: no encounters, and no ${W.cards} tied to a place.</p><div class="rplaces">${[...Array(20)].map((_,i)=>`<div><b>${i+1}. ${guildName(i+1)}</b><span>${guildText(i+1)}</span></div>`).join('')}</div>
+    <h4>${PNAME[19]}</h4><div class="rplaces"><div><b>${W.moveTile}</b><span>${TT_TEXT('m')}</span></div><div><b>${W.encTile}</b><span>${TT_TEXT('e')}</span></div><div><b>${W.bak[0].toUpperCase()+W.bak.slice(1)}</b><span>Its two sides ask for ${BAK_SIDES[0].map(chip).join('')} and ${BAK_SIDES[1].map(chip).join('')}; it flips after each use.</span></div></div>`:''}
     <h4>Tips</h4>
     <p>Reachable places show a hint of what you'd get. ◆ marks a ${W.ruby} you can take right now. <b>Suggest</b> asks the AI for its pick, and <b>Undo</b> takes back a move as long as no dice were rolled and no cards were drawn.</p>
   </div>`,[{label:'Close',value:null,primary:true}],{wide:true});
@@ -820,8 +1052,8 @@ function tileStatus(pl){
   case 14:case 15:return MOSQUE[pl].map(c=>`${chip(c)}${G.mosque[c].length?G.mosque[c][0]:'–'}`).join(' ')+` <span class="ruby">◆${G.mosqueRubies[pl]}</span>`;
   case 16:{const left=G.gemRubies-G.gemTaken;return left?`<span class="ruby">◆${left}</span> ${gemPrice(G)}${CS()}`:'sold out';}
   case 17:return `→ 2${teaIc()} ×3`;
-  case 18:return `+1${teaIc()}`;
-  case 19:return 'soon';
+  case 18:return `+1${teaIc()} +2 ${W.guildCards}`;
+  case 19:return `<span class="ruby">◆</span> ${BAK_SIDES[G.bak].map(chip).join('')}+4${teaIc()}`;
   case 20:{const left=G.chRubies-G.chTaken;return left?`<span class="ruby">◆${left}</span> ${chCost(G)}${teaIc()}`:'sold out';}
   }
 }
@@ -836,7 +1068,8 @@ function tokens(pl){
   const fig=(art,cls,k,title,fallback)=>art?`<i class="mer standee ${cls} ${FACE[k]?'flip':''}" data-k="${k}" title="${title}"><img src="${art}" alt=""></i>`:fallback;
   G.neutrals.forEach((x,k)=>{if(x.pos===pl)h+=fig(A.neutral,'c-grey','n'+k,(W.neutral||`Neutral ${W.merchant}`),`<i class="mer c-grey" data-k="n${k}" title="Neutral ${W.merchant}"></i>`);});
   const apIc=ICON('apprentice'),coIc=ICON('cousin');
-  G.players.forEach(q=>{if(q.assist[pl])h+=`<i class="ast c-${q.color} ${apIc?'icon':''}" data-k="a${q.i}-${pl}" title="${esc(q.name)}'s ${W.assistant}">${apIc?`<img src="${apIc}" alt="">`:''}${q.assist[pl]>1?`<b>${q.assist[pl]}</b>`:''}</i>`;});
+  const me=stripPlayer();
+  G.players.forEach(q=>{if(q.assist[pl])h+=`<i class="ast c-${q.color} ${apIc?'icon':''} ${me&&q===me?'mine':''}" data-k="a${q.i}-${pl}" title="${esc(q.name)}'s ${W.assistant}">${apIc?`<img src="${apIc}" alt="">`:''}${q.assist[pl]>1?`<b>${q.assist[pl]}</b>`:''}</i>`;});
   G.players.forEach(q=>{if(q.family===pl)h+=`<i class="fam c-${q.color} ${coIc?'icon':''}" data-k="f${q.i}" title="${esc(q.name)}'s ${W.family}">${coIc?`<img src="${coIc}" alt="">`:''}</i>`;});
   if(G.gov===pl)h+=fig(A.gov,'npc c-gov','gov',NT('gov'),`<i class="gov" data-k="gov" title="${W.gov}"><b>${W.gov[0]}</b></i>`);
   if(G.smug===pl)h+=fig(A.smug,'npc c-smug','smug',NT('smug'),`<i class="smg" data-k="smug" title="${W.smug}"><b>${W.smug[0]}</b></i>`);
@@ -853,6 +1086,8 @@ function placeDetail(pl){
   case 13:{const left=G.sultanRubies-G.sultanTaken;return `<div class="detail"><span><span class="k">Next delivery</span>${left?`<span class="chips">${sultanReq(G).map(chip).join('')}</span>`:'—'}</span><span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${left}</span></span></div>`;}
   case 14:case 15:return `<div class="detail">${MOSQUE[pl].map(c=>`<span><span class="k">${GNAME[c]} tile</span>${G.mosque[c].length?`needs ${G.mosque[c][0]} ${chip(c)}`:'gone'} <small class="muted">${TILE_ABIL[c]}</small></span>`).join('')}<span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${G.mosqueRubies[pl]}</span></span></div>`;
   case 16:{const left=G.gemRubies-G.gemTaken;return `<div class="detail"><span><span class="k">Price</span>${left?L(gemPrice(G)):'—'}</span><span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${left}</span></span></div>`;}
+  case 18:return `<div class="detail"><span><span class="k">Your ${W.guildCards}</span>${(p.guild||[]).length}</span><span><span class="k">Play one</span>instead of a whole turn</span></div>`;
+  case 19:return `<div class="detail"><span><span class="k">${W.barrier[0].toUpperCase()+W.barrier.slice(1)} · ${TEA(2)}</span>${G.barrier?`${SHORT[G.barrier[0]]} | ${SHORT[G.barrier[1]]}`:'not placed'}</span><span><span class="k">${W.moveTile}</span>${G.tt.m.length?TEA(G.tt.m[0]):'gone'}</span><span><span class="k">${W.encTile}</span>${G.tt.e.length?TEA(G.tt.e[0]):'gone'}</span><span><span class="k">${W.bak[0].toUpperCase()+W.bak.slice(1)}</span><span class="chips">${BAK_SIDES[G.bak].map(chip).join('')}</span> + ${TEA(4)}</span></div>`;
   case 20:{const left=G.chRubies-G.chTaken;return `<div class="detail"><span><span class="k">Price</span>${left?TEA(chCost(G)):'—'}</span><span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${left}</span></span><span><span class="k">Your ${W.coffee}</span>${p.coffee}</span></div>`;}
   }
   return '';
@@ -865,7 +1100,7 @@ function preview(p,pl,mode){
   else out.push({t:`No ${W.assistant} with you. Your turn would end on arrival.`,c:'bad'});
   if(pl!==7){const n=G.players.filter(q=>q!==p&&q.pos===pl).length+G.neutrals.filter(x=>x.pos===pl).length;
     if(n)out.push({t:`Pay ${L(2*n)} to the ${plural(n,W.merchant,W.merchants)} here.`,c:p.lira>=2*n?'':'bad'});}
-  const h=hintFor(p,pl,mode);if(h.t&&h.k!=='bad')out.push({t:`You'd get: ${h.t.replace(' +catch','')}`,c:h.k==='meh'?'':'good'});
+  const back=pl!==7&&mode!=='stay'&&p.assist[pl]?` +${ICON('apprentice')?`<img class="gi" src="${ICON('apprentice')}" alt="${W.assistant}">`:W.assistant}`:'';const h=hintFor(p,pl,mode);if(h.t&&h.k!=='bad')out.push({t:`You'd get: ${h.t.replace(' +catch','').replace(back,'')}`,c:h.k==='meh'?'':'good'});
   const fams=G.players.filter(q=>q!==p&&q.family===pl&&pl!==12);
   if(fams.length)out.push({t:`Catch ${fams.map(q=>esc(q.name)).join(', ')}'s ${W.family} for a reward.`,c:'good'});
   if(G.gov===pl)out.push({t:`${NSC('gov')} is here: draw a ${W.card} for ${L(2)} or a card.`});
@@ -883,12 +1118,13 @@ function render(){
   let msg='',acts='';
   if(G.over)msg='The game is over.';
   else if(UI.phase==='ai')msg=esc(G.log[0]&&!G.log[0].s?G.log[0].t:`${p.name} is thinking…`);
-  else if(UI.phase==='move'&&mineNow)msg=UI.mode==='stay'?'Stay put: tap your own place, then Stay here.':UI.mode==='move34'?'Long stride: tap a place 3 or 4 steps away.':UI.mode==='corner'?`${CARD_DEFS.corner.name}: tap a corner place.`:'Tap a highlighted place, then Move here.';
+  else if(UI.phase==='move'&&mineNow)msg=UI.mode==='stay'?'Stay put: tap your own place, then Stay here.':UI.mode==='move34'?'Long stride: tap a place 3 or 4 steps away.':UI.mode==='corner'?`${CARD_DEFS.corner.name}: tap a corner place.`:UI.mode==='line'?`${W.moveTile}: tap any place in a straight line.`:'Tap a highlighted place, then Move here.';
   else if(UI.phase==='busy')msg=esc(G.log[0]&&!G.log[0].s?G.log[0].t:'Resolving your action…');
   else if(UI.phase==='post')msg='Play a card if you like, then end your turn.';
   else{const e=G.log.find(x=>!x.s);msg=esc(e?e.t:`Waiting for ${p.name}…`);}
   if(!G.over&&mineNow){
     if(UI.phase==='move')acts+=`<button class="btn" id="suggBtn">Suggest</button>`;
+    if(UI.phase==='move'&&p.tt&&p.tt.m)acts+=`<button class="btn ${UI.mode==='line'?'primary':''}" id="lineBtn">${UI.mode==='line'?'Normal move':'Straight line'}</button>`;
     if(['move','post'].includes(UI.phase)&&p.tiles.y&&!p.yellowUsed&&p.lira>=2&&Object.keys(p.assist).length)acts+=`<button class="btn" id="yelBtn">${chip('y')} Recall (${L(2)})</button>`;
     if(UI.phase==='post'&&RNG_N===TURN.rng)acts+=`<button class="btn" id="undoBtn">Undo move</button>`;
     if(UI.phase==='post')acts+=`<button class="btn primary" id="endBtn">End turn</button>`;
@@ -900,6 +1136,7 @@ function render(){
   const ub=$('#undoBtn');if(ub)ub.onclick=()=>pendingEnd&&pendingEnd('undo');
   const yb=$('#yelBtn');if(yb)yb.onclick=yellowTap;
   const sb=$('#suggBtn');if(sb)sb.onclick=suggestMove;
+  const lb=$('#lineBtn');if(lb)lb.onclick=()=>{UI.mode=UI.mode==='line'?'normal':'line';UI.sel=null;UI.sugg=null;render();};
   const rb=$('#resBtn');if(rb)rb.onclick=showEnd;
   // board
   const moving=UI.phase==='move'&&mineNow;
@@ -908,6 +1145,7 @@ function render(){
   $('#board').innerHTML=G.layout.map((pl,ix)=>{const C=COLS(G),gr=Math.floor(ix/C)+1,gc=ix%C+1;
     const art=T.art.tiles&&T.art.tiles[pl];const h=reach.has(pl)?hintFor(p,pl,UI.mode):null;
     return `<button class="tile k-${KIND[pl]} ${art?'art':''} ${reach.has(pl)?'reach':''} ${moving&&!reach.has(pl)?'dim':''} ${UI.sel===pl?'sel':''} ${UI.sugg===pl?'sugg':''}" data-pl="${pl}" aria-label="${PNAME[pl]}${h?': '+h.t.replace(/<[^>]+>/g,''):''}" style="--r:${gr};--c:${gc};${art?`--art:url('${art}')`:''}"><span class="plate"><span class="pn">${pl}</span><span class="nm">${SHORT[pl]}</span><span class="st">${tileStatus(pl)}</span></span>${h&&h.t?`<span class="hint h-${h.k||'plain'}">${h.t}</span>`:''}${UI.sel===pl&&reach.has(pl)?`<span class="again">Tap again to ${UI.mode==='stay'?'stay':'move'}</span>`:''}<span class="tok n${Math.min(5,G.players.filter(q=>q.pos===pl&&T.art.merchants&&T.art.merchants[q.color]).length+(T.art.neutral?G.neutrals.filter(x=>x.pos===pl).length:0)+(T.art.gov&&G.gov===pl?1:0)+(T.art.smug&&G.smug===pl?1:0)+(T.art.trader&&G.x&&G.trader===pl?1:0))}">${tokens(pl)}</span></button>`;}).join('');
+  drawBarrier();
   document.querySelectorAll('.tile').forEach(t=>t.onclick=()=>{const v=+t.dataset.pl;
     if(moving&&reach.has(v)&&UI.sel===v&&pendingMove){commitMove(v);return;}
     UI.sel=v;render();});
@@ -944,13 +1182,14 @@ function render(){
     const port=T.art.merchants&&T.art.merchants[q.color];
     return `<div class="pl" data-pi="${q.i}"><div class="plh">${port?`<span class="portrait c-${q.color}" style="background-image:url('${port}')"></span>`:`<i class="mer c-${q.color}"></i>`}<span class="nm">${esc(q.name)}</span>${q.ai?'<span class="tag">AI</span>':''}${mine?'<span class="tag">You</span>':''}${away?'<span class="tag">Away</span>':''}${me?'<span class="tag turn">Turn</span>':''}
       <span class="rubies" aria-label="${q.rubies} ${W.rubies}">${[...Array(tgt)].map((_,i)=>`<span class="${i<q.rubies?'ruby':'off'}">◆</span>`).join('')}${q.rubies>tgt?`<span class="ruby">+${q.rubies-tgt}</span>`:''}</span></div>
-      <div class="stats"><span><b>${q.lira}</b> ${W.cur}</span>${G.x?`<span>${teaIc()} <b>${q.coffee}</b> ${W.coffee}</span>`:''}<span><b>${q.stack}</b> ${plural(q.stack,W.assistant,W.assistants)} along${out?` <span class="muted">· out: ${out}</span>`:''}</span><span class="muted">${W.family[0].toUpperCase()+W.family.slice(1)}: ${SHORT[q.family]}</span>
-      <span class="tiles4" title="${W.tiles}">${GOODS.map(c=>`<span class="mt ${q.tiles[c]?'on g-'+c:''}" title="${GNAME[c]} tile"></span>`).join('')}</span></div>
+      <div class="stats"><span><b>${q.lira}</b> ${W.cur}</span>${G.x?`<span>${teaIc()} <b>${q.coffee}</b> ${W.coffee}</span>`:''}<span><b>${q.stack}</b> ${plural(q.stack,W.assistant,W.assistants)} along${out?` <span class="muted">· out: ${out}</span>`:''}</span><span class="muted">${W.family[0].toUpperCase()+W.family.slice(1)}: ${SHORT[q.family]}</span>${q.tt&&q.tt.m?`<span class="tag tt" title="${TT_TEXT('m')}">${W.moveTile}</span>`:''}${q.tt&&q.tt.e?`<span class="tag tt" title="${TT_TEXT('e')}">${W.encTile}</span>`:''}${G.x&&G.barrierOwner===q.i?`<span class="tag tt">Holds the ${W.barrier}</span>`:''}
+      <span class="crates" title="${W.ext}s: ${q.ext} of 3">${ICON('crate')?[0,1,2].map(i=>`<img class="gi ${i<q.ext?'':'off'}" src="${ICON('crate')}" alt="">`).join(''):`${W.ext}s ${q.ext}/3`}</span><span class="tiles4" title="${W.tiles}">${GOODS.map(c=>`<span class="mt ${q.tiles[c]?'on g-'+c:''}" title="${GNAME[c]} tile"></span>`).join('')}</span></div>
       <div class="meters">${GOODS.map(c=>`<div class="meter"><span class="lbl">${chip(c)} ${GNAME[c]} ${q.goods[c]}</span><span class="pips">${[...Array(cap(q))].map((_,i)=>`<span class="pip ${i<q.goods[c]?'g-'+c:''}"></span>`).join('')}</span></div>`).join('')}</div>
-      ${showHand?`<div class="hand">${q.cards.length?q.cards.map((c,i)=>`<button class="cardchip ${UI.mode===c?'armed':''}" data-card="${q.i}:${i}">${CARD_DEFS[c].name}</button>`).join(''):`<span class="muted">No ${W.cards}</span>`}</div>`:`<div class="stats muted">${q.cards.length} ${plural(q.cards.length,W.card,W.cards)}</div>`}
+      ${showHand?`<div class="hand">${q.cards.length?q.cards.map((c,i)=>`<button class="cardchip ${UI.mode===c?'armed':''}" data-card="${q.i}:${i}">${CARD_DEFS[c].name}</button>`).join(''):`<span class="muted">No ${W.cards}</span>`}${(q.guild||[]).map((c,i)=>`<button class="cardchip guild" data-guild="${q.i}:${i}" title="${W.guildCard}">${guildName(c)}</button>`).join('')}</div>`:`<div class="stats muted">${q.cards.length} ${plural(q.cards.length,W.card,W.cards)}${G.x?` · ${(q.guild||[]).length} ${plural((q.guild||[]).length,W.guildCard,W.guildCards)}`:''}</div>`}
       ${canRejoin?`<button class="btn" style="margin-top:8px" data-rejoin="${q.i}">This is me: play as ${esc(q.name)}</button>`:''}
     </div>`;}).join('');
   document.querySelectorAll('[data-card]').forEach(b=>b.onclick=()=>{const[a,c]=b.dataset.card.split(':');cardTap(+a,+c);});
+  document.querySelectorAll('[data-guild]').forEach(b=>b.onclick=()=>{const[a,c]=b.dataset.guild.split(':');guildTap(+a,+c);});
   document.querySelectorAll('[data-rejoin]').forEach(b=>b.onclick=()=>rejoinSeat(+b.dataset.rejoin));
   // log
   $('#log').innerHTML=G.log.slice(0,60).map(e=>`<li class="${e.s?'sep':''}">${e.c?`<i class="c-${e.c}"></i>`:''}<span>${esc(e.t)}</span></li>`).join('');
@@ -961,6 +1200,17 @@ function render(){
   runFx(before);
   if(ON.code&&ON.driving)queueLive();
 }
+function drawBarrier(){
+  const b=$('#board');if(!b)return;b.querySelectorAll('.barrier').forEach(x=>x.remove());
+  if(!G||!G.barrier)return;
+  const ta=b.querySelector(`.tile[data-pl="${G.barrier[0]}"]`),tb=b.querySelector(`.tile[data-pl="${G.barrier[1]}"]`);if(!ta||!tb)return;
+  const br=b.getBoundingClientRect(),ra=ta.getBoundingClientRect(),rb=tb.getBoundingClientRect();
+  const el=document.createElement('div');el.className='barrier c-'+G.players[G.barrierOwner].color;el.title=`${W.barrier[0].toUpperCase()+W.barrier.slice(1)} (${G.players[G.barrierOwner].name} may cross)`;
+  if(Math.abs(ra.top-rb.top)<4){const x=(Math.max(ra.left,rb.left)+Math.min(ra.right,rb.right))/2-br.left;Object.assign(el.style,{left:(x-4)+'px',top:(ra.top-br.top+ra.height*.15)+'px',width:'8px',height:(ra.height*.7)+'px'});}
+  else{const y=(Math.max(ra.top,rb.top)+Math.min(ra.bottom,rb.bottom))/2-br.top;Object.assign(el.style,{top:(y-4)+'px',left:(ra.left-br.left+ra.width*.15)+'px',height:'8px',width:(ra.width*.7)+'px'});}
+  b.appendChild(el);
+}
+addEventListener('resize',()=>{if(G)drawBarrier();});
 /* ---------- my status strip (phones) ---------- */
 let LAST_HUMAN=null;
 function stripPlayer(){
@@ -984,7 +1234,7 @@ function renderStrip(){
     <span class="ms-stat ms-coin" title="${W.cur}">${coinIc()||'<span class="coin">c</span>'}<b>${q.lira}</b></span>${G.x?`<span class="ms-stat ms-tea" title="${W.coffeeLong}">${teaIc()}<b>${q.coffee}</b></span>`:''}
     <span class="ms-goods">${GOODS.map(c=>`<span class="ms-g ${q.goods[c]>=cap(q)?'full':''} ${q.goods[c]===0?'zero':''}" title="${GNAME[c]} ${q.goods[c]} of ${cap(q)}">${chip(c)}<b>${q.goods[c]}</b><small>/${cap(q)}</small></span>`).join('')}</span>
     <span class="ms-stat ms-ap ${q.stack===0?'bad':''}" title="${W.assistants} with you">${ICON('apprentice')?`<img class="gi" src="${ICON('apprentice')}" alt="">`:`<i class="ast c-${q.color}"></i>`}<b>${q.stack}</b></span>
-    <span class="ms-stat ms-cards" title="${W.cards}">${ICON('card')?`<img class="gi" src="${ICON('card')}" alt="">`:'<span class="mini-card"></span>'}<b>${q.cards.length}</b></span>`;
+    <span class="ms-stat ms-cards" title="${W.cards}">${ICON('card')?`<img class="gi" src="${ICON('card')}" alt="">`:'<span class="mini-card"></span>'}<b>${q.cards.length}</b></span>${q.ext&&ICON('crate')?`<span class="ms-stat ms-crate" title="${W.ext}s">${`<img class="gi" src="${ICON('crate')}" alt="">`}<b>${q.ext}</b></span>`:''}`;
   $('#msWho').onclick=()=>{const t=document.querySelector(`.pl[data-pi="${q.i}"]`);if(t)t.scrollIntoView({behavior:REDUCED?'auto':'smooth',block:'center'});};
   fitDock();
 }
@@ -1014,12 +1264,12 @@ function setupSheet(){
     $('#layoutSel').onchange=e=>st.layout=e.target.value;
     s.querySelectorAll('[data-exp]').forEach(b=>b.onclick=()=>{keep();st.exp=b.dataset.exp==='1';draw();});
     $('#cancelBtn').onclick=()=>{w.hidden=true;};
-    $('#goBtn').onclick=()=>{keep();w.hidden=true;startGame({players:st.players.slice(0,st.n).map(p=>({name:cleanName(p.name),ai:p.ai})),layout:st.layout,exp:PREVIEW&&st.exp});};
+    $('#goBtn').onclick=()=>{keep();w.hidden=true;startGame({players:st.players.slice(0,st.n).map(p=>({name:cleanName(p.name),ai:p.ai})),layout:st.layout,exp:st.exp});};
   };
   draw();w.hidden=false;
 }
 
-const expToggle=on=>PREVIEW?`<div><h4>Expansion <span class="tag">Preview</span></h4><div class="seg">${[['0','Base game'],['1',`+ ${W.coffeeLong}`]].map(([v,l])=>`<button data-exp="${v}" class="${(on?'1':'0')===v?'on':''}">${l}</button>`).join('')}</div><p class="muted small">Adds 4 places on a 5×4 board, ${W.coffeeLong}, ${NS('trader')} and 8 ${W.cards}. Games end at 6 ${W.rubies}.</p></div>`:'';
+const expToggle=on=>`<div><h4>Expansion</h4><div class="seg">${[['0','Base game'],['1',T.expName||'Expansion']].map(([v,l])=>`<button data-exp="${v}" class="${(on?'1':'0')===v?'on':''}">${l}</button>`).join('')}</div><p class="muted small">Adds 4 places on a 5×4 board: ${W.coffeeLong}, ${NS('trader')}, ${W.guildCards}, the ${PNAME[19]} and 9 new ${W.cards}. Games end at 6 ${W.rubies}.</p></div>`;
 /* ---------- shared helpers for screens ---------- */
 function rid(n){const a='abcdefghijkmnpqrstuvwxyz23456789';let s='';for(let i=0;i<n;i++)s+=a[Math.floor(Math.random()*a.length)];return s;}
 function rcode(){const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<5;i++)s+=a[Math.floor(Math.random()*a.length)];return s;}
@@ -1106,7 +1356,7 @@ function onGame(d){
   if(G.over&&!ON.shownEnd){ON.shownEnd=true;showEnd();}
   maybeDrive();
 }
-function parseState(s){const g=JSON.parse(s);g.players.forEach(p=>p.name=cleanName(p.name)||W.merchant);return g;}
+function parseState(s){const g=upgradeState(JSON.parse(s));g.players.forEach(p=>p.name=cleanName(p.name)||W.merchant);return g;}
 function abortDrive(){ON.drive++;ON.driving=false;GEN++;$('#sheetWrap').hidden=true;clearTimeout(ON.liveT);ON.liveT=null;pendingMove&&pendingMove(null);pendingEnd&&pendingEnd();}
 function amDriver(){
   const p=cur(G);if(!p.ai)return ownerOf(p)===ME;
@@ -1221,7 +1471,7 @@ function renderHome(){
     const nm=cleanName($('#homeName').value);if(!nm){toast('Type your name first.');$('#homeName').focus();return;}
     lsSet('istanbul-name',nm);
     const seats=[...Array(HOME.n)].map((_,i)=>i===0?{name:nm,ai:false,owner:ME}:HOME.seats[i]==='ai'?{name:AI_NAMES[i],ai:true,owner:'ai'}:{name:'Friend',ai:false,owner:'-'});
-    createOnline({seats,layout:HOME.layout,exp:PREVIEW&&HOME.exp});
+    createOnline({seats,layout:HOME.layout,exp:HOME.exp});
   };
   const jc=()=>{const c=$('#joinCode').value.trim();if(c)enterOnline(c);else toast('Type the game code first.');};
   $('#joinBtn').onclick=jc;$('#joinCode').onkeydown=e=>{if(e.key==='Enter')jc();};

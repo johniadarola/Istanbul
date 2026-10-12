@@ -27,6 +27,7 @@ window.THEME = {
     coffee: 'mushrooms', coffee1: 'mushroom', coffeeLong: 'mushrooms',
     trader: 'Forager', traderName: 'Sorrel', traderTitle: 'Sorrel, Squirrel Forager',
     guildCard: 'guild card', guildCards: 'guild cards',
+    barrier: 'barricade', ttile: 'Snug favour', ttiles: 'Snug favours', moveTile: 'Gutter map', encTile: 'Friends in low places', bak: 'bribe slate',
     orders: 'Orders'
   },
 
@@ -65,9 +66,9 @@ window.THEME = {
     17: { name: 'Mushroom Grotto', short: 'Grotto',
           desc: 'The foragers trade from their damp little cave. Do 1 to 3 of these, each once: pay 2 Coppers, pay 1 good, or give up a favour card. Each gets you 2 mushrooms.' },
     18: { name: 'Guild Hall', short: 'Guild Hall',
-          desc: 'Take 1 mushroom. (Preview: guild cards arrive in the next update.)' },
+          desc: 'Take 1 mushroom and draw 2 guild cards, then discard 1 guild card. On your turn you can play a guild card instead of moving.' },
     19: { name: 'Gutterlane Snug', short: 'Gutterlane Snug',
-          desc: 'Slip the regulars some mushrooms for the Barrier, a Snug favour or a Gold Feather. (Preview: opens in a later update.)' },
+          desc: 'Slip the regulars some mushrooms. Choose one: 2 to put up the barricade beside a place and take its action; buy a Snug favour (the Gutter map or Friends in low places); or 4 plus the goods on the bribe slate for a Gold Feather from the Aerie, Glimmer\'s Hoard or the Roastery.' },
     20: { name: 'Roastery', short: 'Roastery',
           desc: 'Your mushrooms are roasted and brewed into the tea the Ascendancy craves, for a Gold Feather. The first costs 6 mushrooms, and each Feather taken makes the next cost 1 more.' }
   },
@@ -84,6 +85,7 @@ window.THEME = {
     recall:  { name: 'Whistle',         text: 'Before moving, call 1 apprentice home.' },
     smAny:   { name: 'Haggle',          text: 'At the Riverside Stalls, sell any types of goods. Offered during that action.' },
     tea2:    { name: 'Spare pouch',     text: 'Take 2 mushrooms.' },
+    gcard:   { name: 'Word with the guild', text: 'Pay 2 mushrooms and draw 1 guild card.' },
     tea8:    { name: 'Truffle buyer',   text: 'Pay 1 mushroom and take 8 Coppers.' },
     diceGift:{ name: 'Lucky bones',     text: 'Roll 2 dice and take a reward for each: 1 = 2 Coppers, 2 = Honey, 3 = Herbs, 4 = Wool, 5 = Pearls, 6 = a mushroom.' },
     swap3:   { name: 'Swap meet',       text: 'Exchange up to 3 goods or mushrooms for the same number of other goods or mushrooms.' },
@@ -102,6 +104,8 @@ window.THEME = {
 
   /* Storybook serif for place names and headings */
   fonts: { link: 'Alegreya:wght@500;700;800', display: "'Alegreya', Georgia, serif", tile: "'Alegreya', Georgia, serif" },
+
+  expName: 'Mushrooms & Guilds',
 
   aiNames: ['Bramble', 'Tansy', 'Fennel', 'Mossy', 'Sedge'],
 
