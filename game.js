@@ -895,6 +895,9 @@ function runFx(before){
       if(p.tiles>q.tiles)bits.push(`<span class="up">+1 tile</span>`);
       if(dl>0)sounds.add('coin');if(GOODS.some(c=>p.goods[c]>q.goods[c]))sounds.add('goods');if(dc>0)sounds.add('card');
       if(bits.length)popGain(i,bits.join(''));
+      if(dl>0)flyGain(i,'lira',Math.ceil(dl/3),CS());
+      GOODS.forEach(c=>{const d=p.goods[c]-q.goods[c];if(d>0)flyGain(i,c,d,chip(c));});
+      if(p.coffee>q.coffee)flyGain(i,'coffee',p.coffee-q.coffee,teaIc());
       if(bits.length){const el=document.querySelector(`.pl[data-pi="${i}"]`);if(el&&!REDUCED)el.animate([{background:'color-mix(in srgb, var(--turq) 22%, transparent)'},{background:'transparent'}],{duration:1200});}
       if(p.rubies>q.rubies){rubyFlourish(i,p.rubies);sounds.add('ruby');}
     });
@@ -1170,7 +1173,7 @@ function render(){
     <div class="lc-frame">
       ${partArt?`<div class="lc-art"><img src="${partArt}" alt=""></div>`:''}
       <header class="lc-title"><span class="lc-num">${pl}</span><h3>${PNAME[pl]}</h3></header>
-      <div class="lc-body"><p class="pd">${PDESC[pl]}</p>${placeDetail(pl)}</div>
+      <div class="lc-body"><p class="pd">${PDESC[pl]}</p>${placeDetail(pl)}${hereList(pl)}</div>
     </div>
   </article>`;
   if(moving){
@@ -1190,9 +1193,9 @@ function render(){
     const port=T.art.merchants&&T.art.merchants[q.color];
     return `<div class="pl" data-pi="${q.i}"><div class="plh">${port?`<span class="portrait c-${q.color}" style="background-image:url('${port}')"></span>`:`<i class="mer c-${q.color}"></i>`}<span class="nm">${esc(q.name)}</span>${q.ai?'<span class="tag">AI</span>':''}${mine?'<span class="tag">You</span>':''}${away?'<span class="tag">Away</span>':''}${me?'<span class="tag turn">Turn</span>':''}
       <span class="rubies" aria-label="${q.rubies} ${W.rubies}">${[...Array(tgt)].map((_,i)=>`<span class="${i<q.rubies?'ruby':'off'}">◆</span>`).join('')}${q.rubies>tgt?`<span class="ruby">+${q.rubies-tgt}</span>`:''}</span></div>
-      <div class="stats"><span><b>${q.lira}</b> ${W.cur}</span>${G.x?`<span>${teaIc()} <b>${q.coffee}</b> ${W.coffee}</span>`:''}<span><b>${q.stack}</b> ${plural(q.stack,W.assistant,W.assistants)} along${out?` <span class="muted">· out: ${out}</span>`:''}</span><span class="muted">${W.family[0].toUpperCase()+W.family.slice(1)}: ${SHORT[q.family]}</span>${q.tt&&q.tt.m?`<span class="tag tt" title="${TT_TEXT('m')}">${W.moveTile}</span>`:''}${q.tt&&q.tt.e?`<span class="tag tt" title="${TT_TEXT('e')}">${W.encTile}</span>`:''}${G.x&&G.barrierOwner===q.i?`<span class="tag tt">Holds the ${W.barrier}</span>`:''}
-      <span class="crates" title="${W.ext}s: ${q.ext} of 3">${ICON('crate')?[0,1,2].map(i=>`<img class="gi ${i<q.ext?'':'off'}" src="${ICON('crate')}" alt="">`).join(''):`${W.ext}s ${q.ext}/3`}</span><span class="tiles4" title="${W.tiles}">${GOODS.map(c=>`<span class="mt ${q.tiles[c]?'on g-'+c:''}" title="${GNAME[c]} tile"></span>`).join('')}</span></div>
-      <div class="meters">${GOODS.map(c=>`<div class="meter"><span class="lbl">${chip(c)} ${GNAME[c]} ${q.goods[c]}</span><span class="pips">${[...Array(cap(q))].map((_,i)=>`<span class="pip ${i<q.goods[c]?'g-'+c:''}"></span>`).join('')}</span></div>`).join('')}</div>
+      <div class="stats"><span data-stat="lira"><b>${q.lira}</b> ${W.cur}</span>${G.x?`<span data-stat="coffee">${teaIc()} <b>${q.coffee}</b> ${W.coffee}</span>`:''}<span><b>${q.stack}</b> ${plural(q.stack,W.assistant,W.assistants)} along${out?` <span class="muted">· out: ${out}</span>`:''}</span><span class="muted">${W.family[0].toUpperCase()+W.family.slice(1)}: ${SHORT[q.family]}</span>${q.tt&&q.tt.m?`<span class="tag tt" title="${TT_TEXT('m')}">${W.moveTile}</span>`:''}${q.tt&&q.tt.e?`<span class="tag tt" title="${TT_TEXT('e')}">${W.encTile}</span>`:''}${G.x&&G.barrierOwner===q.i?`<span class="tag tt">Holds the ${W.barrier}</span>`:''}
+      <span class="tiles4" title="${W.tiles}">${GOODS.map(c=>`<span class="mt ${q.tiles[c]?'on g-'+c:''}" title="${GNAME[c]} tile"></span>`).join('')}</span></div>
+      ${cartHTML(q)}
       ${showHand?`<div class="hand">${q.cards.length?q.cards.map((c,i)=>`<button class="cardchip ${UI.mode===c?'armed':''}" data-card="${q.i}:${i}">${CARD_DEFS[c].name}</button>`).join(''):`<span class="muted">No ${W.cards}</span>`}${(q.guild||[]).map((c,i)=>`<button class="cardchip guild" data-guild="${q.i}:${i}" title="${W.guildCard}">${guildName(c)}</button>`).join('')}</div>`:`<div class="stats muted">${q.cards.length} ${plural(q.cards.length,W.card,W.cards)}${G.x?` · ${(q.guild||[]).length} ${plural((q.guild||[]).length,W.guildCard,W.guildCards)}`:''}</div>`}
       ${canRejoin?`<button class="btn" style="margin-top:8px" data-rejoin="${q.i}">This is me: play as ${esc(q.name)}</button>`:''}
     </div>`;}).join('');
@@ -1219,6 +1222,78 @@ function drawBarrier(){
   b.appendChild(el);
 }
 addEventListener('resize',()=>{if(G)drawBarrier();});
+/* the handcart: one row per good, five slots; slots past your capacity wait for a crate */
+function cartHTML(q){
+  const crate=ICON('crate');
+  return `<div class="cart" data-cart="${q.i}">${GOODS.map(c=>`<div class="crow r-${c}" data-g="${c}" title="${GNAME[c]}: ${q.goods[c]} of ${cap(q)}">${[...Array(5)].map((_,i)=>{
+    const k=i<q.goods[c]?'full':i<cap(q)?'empty':'locked';
+    return `<span class="slot ${k}">${k==='full'?chip(c):k==='empty'?`<span class="ghost">${chip(c)}</span>`:crate?`<img class="gi" src="${crate}" alt="">`:''}</span>`;}).join('')}</div>`).join('')}</div>`;
+}
+/* who is standing on a place, in words (also helps on touch screens, where there is no hover) */
+function hereList(pl){
+  const out=[];
+  G.players.forEach(q=>{if(q.pos===pl)out.push(`<span class="who c-${q.color}"><i></i>${esc(q.name)}</span>`);});
+  G.neutrals.forEach(x=>{if(x.pos===pl)out.push(`<span class="who c-grey"><i></i>${W.neutral||`Neutral ${W.merchant}`}</span>`);});
+  if(G.gov===pl)out.push(`<span class="who npc">${NT('gov')}</span>`);
+  if(G.smug===pl)out.push(`<span class="who npc">${NT('smug')}</span>`);
+  if(G.x&&G.trader===pl)out.push(`<span class="who npc">${NT('trader')}</span>`);
+  G.players.forEach(q=>{if(q.assist[pl])out.push(`<span class="who c-${q.color}"><i></i>${esc(q.name)}'s ${plural(q.assist[pl],W.assistant,W.assistants)}${q.assist[pl]>1?' ×'+q.assist[pl]:''}</span>`);});
+  G.players.forEach(q=>{if(q.family===pl)out.push(`<span class="who c-${q.color}"><i></i>${esc(q.name)}'s ${W.family}</span>`);});
+  return out.length?`<div class="here"><span class="k">Here</span>${out.join('')}</div>`:'';
+}
+/* hover labels for pieces on the board */
+function tipLabel(el){
+  const k=el.dataset.k||'';let m;
+  if((m=/^m(\d+)$/.exec(k))){const q=G.players[+m[1]];return `${esc(q.name)}${isMine(q)?' (you)':''}`+` · ${W.merchant}`;}
+  if((m=/^a(\d+)-(\d+)$/.exec(k))){const q=G.players[+m[1]];const n=q.assist[+m[2]]||1;return `${esc(q.name)}'s ${plural(n,W.assistant,W.assistants)}${n>1?' ×'+n:''}`;}
+  if((m=/^f(\d+)$/.exec(k))){const q=G.players[+m[1]];return `${esc(q.name)}'s ${W.family}`;}
+  if(/^n\d+$/.test(k))return W.neutral||`Neutral ${W.merchant}`;
+  if(k==='gov'||k==='smug'||k==='trader')return NT(k);
+  return el.getAttribute('aria-label')||'';
+}
+function initTips(){
+  const b=$('#board');const tip=document.createElement('div');tip.className='tip';tip.hidden=true;document.body.appendChild(tip);
+  b.addEventListener('mouseover',e=>{const el=e.target.closest('[data-k]');if(!el||!b.contains(el)){tip.hidden=true;return;}
+    if(el.title){el.dataset.t=el.title;el.removeAttribute('title');}
+    tip.innerHTML=tipLabel(el);if(!tip.innerHTML){tip.hidden=true;return;}
+    const r=el.getBoundingClientRect();tip.hidden=false;const tr=tip.getBoundingClientRect();
+    tip.style.left=Math.max(6,Math.min(innerWidth-tr.width-6,r.left+r.width/2-tr.width/2))+'px';tip.style.top=Math.max(6,r.top-tr.height-6)+'px';});
+  b.addEventListener('mouseleave',()=>tip.hidden=true);
+  addEventListener('scroll',()=>tip.hidden=true,{passive:true});
+}
+/* gains fly out of the tile and into the player's board */
+function flyTarget(i,what){
+  const strip=$('#myStrip');const sp=stripPlayer();
+  const inView=el=>{if(!el)return false;const r=el.getBoundingClientRect();return r.width>0&&r.bottom>0&&r.top<innerHeight;};
+  let el=null;
+  if(sp&&sp.i===i&&!strip.hidden&&getComputedStyle(strip).display!=='none'){
+    el=what==='lira'?strip.querySelector('.ms-coin'):what==='coffee'?strip.querySelector('.ms-tea'):strip.querySelector(`.ms-g[data-g="${what}"]`);
+    if(inView(el))return el;}
+  const card=document.querySelector(`.pl[data-pi="${i}"]`);if(!card)return null;
+  el=what==='lira'?card.querySelector('[data-stat="lira"]'):what==='coffee'?card.querySelector('[data-stat="coffee"]'):card.querySelector(`.crow[data-g="${what}"] .slot.full:last-of-type`)||card.querySelector(`.crow[data-g="${what}"]`);
+  if(what!=='lira'&&what!=='coffee'){const row=card.querySelector(`.crow[data-g="${what}"]`);const full=row&&row.querySelectorAll('.slot.full');if(full&&full.length)el=full[full.length-1];}
+  return inView(el)?el:null;
+}
+function flyGain(i,what,n,html){
+  if(REDUCED)return;
+  const tok=document.querySelector(`#board [data-k="m${i}"]`)||document.querySelector(`#board .tile[data-pl="${G.players[i].pos}"]`);
+  const to=flyTarget(i,what);if(!tok||!to)return;
+  const a=tok.getBoundingClientRect(),z=to.getBoundingClientRect();
+  const sx=a.left+a.width/2,sy=a.top+a.height*0.4,ex=z.left+z.width/2,ey=z.top+z.height/2;
+  for(let k=0;k<Math.min(n,4);k++){
+    const el=document.createElement('div');el.className='fly';el.innerHTML=html;document.body.appendChild(el);
+    const ox=(k-(Math.min(n,4)-1)/2)*14,up=-38-8*k;
+    const mx=(sx+ex)/2,my=Math.min(sy,ey)-70;
+    const anim=el.animate([
+      {transform:`translate(${sx}px,${sy}px) translate(-50%,-50%) scale(.3)`,opacity:0},
+      {transform:`translate(${sx+ox}px,${sy+up}px) translate(-50%,-50%) scale(1.25)`,opacity:1,offset:.28},
+      {transform:`translate(${sx+ox}px,${sy+up-6}px) translate(-50%,-50%) scale(1.1)`,opacity:1,offset:.42},
+      {transform:`translate(${mx}px,${my}px) translate(-50%,-50%) scale(.95)`,opacity:1,offset:.7},
+      {transform:`translate(${ex}px,${ey}px) translate(-50%,-50%) scale(.6)`,opacity:.9}],
+      {duration:1150,delay:120*k,easing:'cubic-bezier(.45,0,.4,1)',fill:'backwards'});
+    anim.onfinish=()=>{el.remove();if(k===Math.min(n,4)-1)to.animate([{transform:'scale(1)'},{transform:'scale(1.35)'},{transform:'scale(1)'}],{duration:320,easing:'ease-out'});};
+  }
+}
 /* ---------- my status strip (phones) ---------- */
 let LAST_HUMAN=null;
 function stripPlayer(){
@@ -1240,7 +1315,7 @@ function renderStrip(){
       <span class="ms-name">${esc(q.name)}<small>${turn?'Your turn':'You'}</small></span></button>
     <span class="ms-stat ms-feath" title="${W.rubies}">${fe?`<img class="gi" src="${fe}" alt="">`:'<span class="ruby">◆</span>'}<b>${q.rubies}</b><small>/${winTarget(G)}</small></span>
     <span class="ms-stat ms-coin" title="${W.cur}">${coinIc()||'<span class="coin">c</span>'}<b>${q.lira}</b></span>${G.x?`<span class="ms-stat ms-tea" title="${W.coffeeLong}">${teaIc()}<b>${q.coffee}</b></span>`:''}
-    <span class="ms-goods">${GOODS.map(c=>`<span class="ms-g ${q.goods[c]>=cap(q)?'full':''} ${q.goods[c]===0?'zero':''}" title="${GNAME[c]} ${q.goods[c]} of ${cap(q)}">${chip(c)}<b>${q.goods[c]}</b><small>/${cap(q)}</small></span>`).join('')}</span>
+    <span class="ms-goods">${GOODS.map(c=>`<span class="ms-g ${q.goods[c]>=cap(q)?'full':''} ${q.goods[c]===0?'zero':''}" data-g="${c}" title="${GNAME[c]} ${q.goods[c]} of ${cap(q)}">${chip(c)}<b>${q.goods[c]}</b><small>/${cap(q)}</small></span>`).join('')}</span>
     <span class="ms-stat ms-ap ${q.stack===0?'bad':''}" title="${W.assistants} with you">${ICON('apprentice')?`<img class="gi" src="${ICON('apprentice')}" alt="">`:`<i class="ast c-${q.color}"></i>`}<b>${q.stack}</b></span>
     <span class="ms-stat ms-cards" title="${W.cards}">${ICON('card')?`<img class="gi" src="${ICON('card')}" alt="">`:'<span class="mini-card"></span>'}<b>${q.cards.length}</b></span>${q.ext&&ICON('crate')?`<span class="ms-stat ms-crate" title="${W.ext}s">${`<img class="gi" src="${ICON('crate')}" alt="">`}<b>${q.ext}</b></span>`:''}`;
   $('#msWho').onclick=()=>{const t=document.querySelector(`.pl[data-pi="${q.i}"]`);if(t)t.scrollIntoView({behavior:REDUCED?'auto':'smooth',block:'center'});};
@@ -1500,6 +1575,7 @@ $('#codeChip').onclick=()=>copyText(shareLink(ON.code));
   document.title=T.name;$('#brandName').textContent=T.name;$('#footText').textContent=T.foot;
   renderSoundBtn();
   document.body.classList.add('t-'+T.id);
+  initTips();
   const fe=ICON('feather');
   if(fe){const swap=root=>{const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const hits=[];while(w.nextNode())if(w.currentNode.nodeValue.includes('◆'))hits.push(w.currentNode);
       hits.forEach(t=>{const parts=t.nodeValue.split('◆');const f=document.createDocumentFragment();parts.forEach((x,i)=>{if(i){const im=document.createElement('img');im.className='gi fe';im.src=fe;im.alt=W.ruby;f.appendChild(im);}if(x)f.appendChild(document.createTextNode(x));});t.replaceWith(f);});};
