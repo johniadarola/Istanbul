@@ -569,3 +569,7 @@ body.t-riverfair{--g-b:#b9c6e3}
 /* text box: exactly as tall as its (at most three) lines; the art panel takes the rest */
 .pcard .px{height:auto!important;max-height:none!important;flex:none;padding:2px 3px}
 .pcard .px{padding:2px 3px 0!important;border-bottom:2px solid #fbf3df;overflow:hidden}
+.btn.install{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.install img{border-radius:6px}
+/* installed app: respect the phone's notch and gesture bar */
+@media (display-mode: standalone){body{padding-top:env(safe-area-inset-top)}#dock{padding-bottom:env(safe-area-inset-bottom)}}

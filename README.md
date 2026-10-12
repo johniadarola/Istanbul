@@ -26,3 +26,7 @@ Everything players read lives in a theme file under `themes/`. Copy one, rename 
 To add art, drop images into `art/` and list them in the theme's `art` block:
 - `tiles: { 1: 'art/tiles/01.webp', ... }` sits behind each location tile (about 512×560, with the top third kept calm so the name stays readable)
 - `merchants: { red: 'art/standees/red.webp', ... }` are transparent standee figures for each player color (about 256×384)
+
+## Installing as an app
+On Android (Chrome), open the site and tap **Install Riverfair on this device** on the home screen (or ⋮ → Install app). On iPhone, Safari → Share → Add to Home Screen. Local games work offline.
+After adding new art, run `python3 tools-precache.py <version>` so the offline copy includes it.

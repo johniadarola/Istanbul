@@ -1678,6 +1678,17 @@ async function createOnline(cfg){
   }catch(e){toast("Couldn't create the game: "+(e.message||e));if(btn){btn.disabled=false;btn.textContent='Create game';}}
 }
 
+/* ---------- installable app ---------- */
+let INSTALL_EVT=null;
+const IS_APP=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const IS_IOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();INSTALL_EVT=e;if(!$('#home').hidden)renderHome();});
+addEventListener('appinstalled',()=>{INSTALL_EVT=null;toast(`${T.name} is installed. Open it from your home screen.`);if(!$('#home').hidden)renderHome();});
+async function installApp(){
+  if(INSTALL_EVT){INSTALL_EVT.prompt();const r=await INSTALL_EVT.userChoice.catch(()=>null);INSTALL_EVT=null;renderHome();return;}
+  sheet(`Install ${T.name}`,IS_IOS?`<p>In Safari, tap the <b>Share</b> button, then <b>Add to Home Screen</b>.</p><p class="muted">${T.name} then opens full screen from its own icon, and local games work offline.</p>`
+    :`<p>Open your browser's menu (⋮) and choose <b>Install app</b> or <b>Add to Home screen</b>.</p><p class="muted">${T.name} then opens full screen from its own icon, and local games work offline.</p>`,[{label:'Got it',value:null,primary:true}]);
+}
 /* ---------- home ---------- */
 const HOME={n:2,seats:['friend','friend','ai','ai','ai'],layout:'short',exp:false};
 function goHome(){leaveOnline();GEN++;pendingMove=pendingEnd=null;$('#sheetWrap').hidden=true;showScreen('home');renderHome();}
@@ -1706,6 +1717,7 @@ function renderHome(){
       <button class="btn primary big" id="localBtn">Set up a game</button>
       ${saved&&!saved.over&&saved.players?`<button class="btn big" id="resumeBtn">Continue saved game <small>· round ${saved.round}, ${saved.players.length} players</small></button>`:''}
       <button class="btn big" id="rulesBtn2">How to play</button>
+      ${IS_APP?'':`<button class="btn big install" id="installBtn"><img src="art/app/icon-192.png" alt="" width="22" height="22"> Install ${T.name} on this device</button>`}
     </div>
   </div>`;
   document.querySelectorAll('#hn [data-n]').forEach(b=>b.onclick=()=>{HOME.n=+b.dataset.n;renderHome();});
@@ -1722,6 +1734,7 @@ function renderHome(){
   $('#joinBtn').onclick=jc;$('#joinCode').onkeydown=e=>{if(e.key==='Enter')jc();};
   $('#localBtn').onclick=setupSheet;
   $('#rulesBtn2').onclick=rulesSheet;
+  const ib=$('#installBtn');if(ib)ib.onclick=installApp;
   const rb=$('#resumeBtn');if(rb)rb.onclick=()=>resumeGame(saved);
 }
 
