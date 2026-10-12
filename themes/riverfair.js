@@ -143,7 +143,9 @@ window.THEME = {
       wool: 'art/icons/wool.webp', herbs: 'art/icons/herbs.webp', honey: 'art/icons/honey.webp', pearls: 'art/icons/pearls.webp',
       any: 'art/icons/any.webp', feather: 'art/icons/feather.webp', coin: 'art/icons/coin.webp',
       apprentice: 'art/icons/apprentice.webp', cousin: 'art/icons/cousin.webp',
-      card: 'art/icons/card.webp', coffee: 'art/icons/mushroom.webp', charter: 'art/icons/charter.webp', crate: 'art/icons/crate.webp'
+      card: 'art/icons/card.webp', coffee: 'art/icons/mushroom.webp', charter: 'art/icons/charter.webp', crate: 'art/icons/crate.webp',
+      'badge-r': 'art/icons/badge-r.webp', 'badge-g': 'art/icons/badge-g.webp', 'badge-y': 'art/icons/badge-y.webp', 'badge-b': 'art/icons/badge-b.webp',
+      'gutter-map': 'art/icons/gutter-map.webp', friends: 'art/icons/friends.webp', barricade: 'art/icons/barricade.webp', 'guild-card': 'art/icons/guild-card.webp'
     },
     neutral: 'art/standees/rat.webp',   // the three neutral traders in 2-player games
     gov: 'art/standees/crow.webp',      // Crow Clerk

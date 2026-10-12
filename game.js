@@ -715,7 +715,8 @@ async function humanDecide(ctx,p,kind,d){
   case 'discardGuild':return sheet(d.title||`Discard a ${W.guildCard}`,`<p>Choose a ${W.guildCard} to discard.</p>`,p.guild.map((c,i)=>({label:`${guildName(c)} <small>${guildText(c)}</small>`,value:i})));
   case 'discardKind':return sheet(d.title,`<p>Give up a ${W.card} or a ${W.guildCard}?</p>`,[{label:`A ${W.card}`,value:'bonus',primary:true},{label:`A ${W.guildCard}`,value:'guild'}]);
   case 'payGoods':return payGoodsSheet(p,d);
-  case 'snug':{const lab={barrier:`Put up the ${W.barrier} and take a nearby action`,tm:`Buy the ${W.moveTile}`,te:`Buy the ${W.encTile}`,bak:`Pay ${BAK_SIDES[G.bak].map(chip).join('')} for a ${W.ruby}`};
+  case 'snug':{const oi=k=>ICON(k)?`<img class="gi" src="${ICON(k)}" alt="" style="width:1.6em;height:1.6em;margin-right:4px">`:'';
+    const lab={barrier:`${oi('barricade')}Put up the ${W.barrier} and take a nearby action`,tm:`${oi('gutter-map')}Buy the ${W.moveTile}`,te:`${oi('friends')}Buy the ${W.encTile}`,bak:`Pay ${BAK_SIDES[G.bak].map(chip).join('')} for a ${W.ruby}`};
     const sub={barrier:'Only you may cross it',tm:TT_TEXT('m'),te:TT_TEXT('e'),bak:'From the '+bakRubyPlaces(G).map(x=>SHORT[x]).join(', ')};
     return sheet(PNAME[19],`<p>${d.times>1?`Action ${d.n+1} of up to ${d.times}. `:''}You have ${TEA(p.coffee)}.</p>`,[...d.opts.map(o=>({label:`<b>${lab[o.k]}</b> <span class="cost">${teaIc()}${o.pay}</span><small>${sub[o.k]}</small>`,value:o.k,cls:'opt'})),{label:d.n?'Done':'Skip',value:null}]);}
   case 'barrierSide':return sheet(`Place the ${W.barrier}`,`<p>Which edge of the ${PNAME[d.a]} does the ${W.barrier} go on? Others can't cross between those two places.</p>`,d.options.map(x=>({label:`Between it and the ${PNAME[x]}`,value:x})));
@@ -863,7 +864,7 @@ function renderSoundBtn(){const b=$('#soundBtn');b.setAttribute('aria-pressed',S
 /* ---------- board-game effects: sliding tokens, gain pop-ups, dice, ruby flourish ---------- */
 const FX={prev:null,quiet:false,rollSeen:null};
 const FACE={}; // standees face the way they last walked
-function fxSnap(){return{id:G.id,cur:G.current,over:G.over,roll:G.lastRoll?G.lastRoll.n:0,players:G.players.map(p=>({pos:p.pos,lira:p.lira,coffee:p.coffee||0,assist:{...p.assist},goods:{...p.goods},rubies:p.rubies,cards:p.cards.length,ext:p.ext,tiles:GOODS.reduce((s,c)=>s+p.tiles[c],0)}))};}
+function fxSnap(){return{id:G.id,cur:G.current,over:G.over,roll:G.lastRoll?G.lastRoll.n:0,players:G.players.map(p=>({pos:p.pos,lira:p.lira,coffee:p.coffee||0,assist:{...p.assist},badges:{...p.tiles},tt:{...(p.tt||{})},guild:(p.guild||[]).length,goods:{...p.goods},rubies:p.rubies,cards:p.cards.length,ext:p.ext,tiles:GOODS.reduce((s,c)=>s+p.tiles[c],0)}))};}
 function tokenRects(){const b=$('#board');if(!b)return{};const br=b.getBoundingClientRect();const o={};b.querySelectorAll('[data-k]').forEach(el=>{const r=el.getBoundingClientRect();o[el.dataset.k]={x:r.left-br.left,y:r.top-br.top};});return o;}
 function runFx(before){
   const prev=FX.prev,now=fxSnap();FX.prev=now;
@@ -903,6 +904,7 @@ function runFx(before){
       GOODS.forEach(c=>{const d=q.goods[c]-p.goods[c];if(d>0)flyGain(i,c,d,chip(c),true);});
       if(p.coffee<q.coffee)flyGain(i,'coffee',q.coffee-p.coffee,teaIc(),true);
       flyApprentices(i,q.assist||{},p.assist||{},before,br);
+      flyItems(i,q,p);
       if(bits.length){const el=document.querySelector(`.pl[data-pi="${i}"]`);if(el&&!REDUCED)el.animate([{background:'color-mix(in srgb, var(--turq) 22%, transparent)'},{background:'transparent'}],{duration:1200});}
       if(p.rubies>q.rubies){rubyFlourish(i,p.rubies);sounds.add('ruby');}
     });
@@ -1199,10 +1201,10 @@ function render(){
     const port=T.art.merchants&&T.art.merchants[q.color];
     return `<div class="pl" data-pi="${q.i}"><div class="plh">${port?`<span class="portrait c-${q.color}" style="background-image:url('${port}')"></span>`:`<i class="mer c-${q.color}"></i>`}<span class="nm">${esc(q.name)}</span>${q.ai?'<span class="tag">AI</span>':''}${mine?'<span class="tag">You</span>':''}${away?'<span class="tag">Away</span>':''}${me?'<span class="tag turn">Turn</span>':''}
       <span class="rubies" aria-label="${q.rubies} ${W.rubies}">${[...Array(tgt)].map((_,i)=>`<span class="${i<q.rubies?'ruby':'off'}">◆</span>`).join('')}${q.rubies>tgt?`<span class="ruby">+${q.rubies-tgt}</span>`:''}</span></div>
-      <div class="stats"><span data-stat="lira"><b>${q.lira}</b> ${W.cur}</span>${G.x?`<span data-stat="coffee">${teaIc()} <b>${q.coffee}</b> ${W.coffee}</span>`:''}<span data-stat="ap"><b>${q.stack}</b> ${plural(q.stack,W.assistant,W.assistants)} along${out?` <span class="muted">· out: ${out}</span>`:''}</span><span class="muted">${W.family[0].toUpperCase()+W.family.slice(1)}: ${SHORT[q.family]}</span>${q.tt&&q.tt.m?`<span class="tag tt" title="${TT_TEXT('m')}">${W.moveTile}</span>`:''}${q.tt&&q.tt.e?`<span class="tag tt" title="${TT_TEXT('e')}">${W.encTile}</span>`:''}${G.x&&G.barrierOwner===q.i?`<span class="tag tt">Holds the ${W.barrier}</span>`:''}
-      <span class="tiles4" title="${W.tiles}">${GOODS.map(c=>`<span class="mt ${q.tiles[c]?'on g-'+c:''}" title="${GNAME[c]} tile"></span>`).join('')}</span></div>
+      <div class="stats"><span data-stat="lira"><b>${q.lira}</b> ${W.cur}</span>${G.x?`<span data-stat="coffee">${teaIc()} <b>${q.coffee}</b> ${W.coffee}</span>`:''}<span data-stat="ap"><b>${q.stack}</b> ${plural(q.stack,W.assistant,W.assistants)} along${out?` <span class="muted">· out: ${out}</span>`:''}</span><span class="muted">${W.family[0].toUpperCase()+W.family.slice(1)}: ${SHORT[q.family]}</span>${q.tt&&q.tt.m?`<span class="tag tt" data-tt="m" title="${TT_TEXT('m')}">${ICON('gutter-map')?`<img class="gi" src="${ICON('gutter-map')}" alt="">`:''}${W.moveTile}</span>`:''}${q.tt&&q.tt.e?`<span class="tag tt" data-tt="e" title="${TT_TEXT('e')}">${ICON('friends')?`<img class="gi" src="${ICON('friends')}" alt="">`:''}${W.encTile}</span>`:''}${G.x&&G.barrierOwner===q.i?`<span class="tag tt">${ICON('barricade')?`<img class="gi" src="${ICON('barricade')}" alt="">`:''}Holds the ${W.barrier}</span>`:''}
+      <span class="tiles4" title="${W.tiles}">${GOODS.map(c=>ICON('badge-'+c)?`<span class="badge ${q.tiles[c]?'on':''}" data-b="${c}" title="${GNAME[c]} ${W.tile}${q.tiles[c]?'':' (not earned)'}"><img class="gi" src="${ICON('badge-'+c)}" alt=""></span>`:`<span class="mt ${q.tiles[c]?'on g-'+c:''}" data-b="${c}" title="${GNAME[c]} tile"></span>`).join('')}</span></div>
       ${cartHTML(q)}
-      ${showHand?`<div class="hand">${q.cards.length?q.cards.map((c,i)=>`<button class="cardchip ${UI.mode===c?'armed':''}" data-card="${q.i}:${i}">${CARD_DEFS[c].name}</button>`).join(''):`<span class="muted">No ${W.cards}</span>`}${(q.guild||[]).map((c,i)=>`<button class="cardchip guild" data-guild="${q.i}:${i}" title="${W.guildCard}">${guildName(c)}</button>`).join('')}</div>`:`<div class="stats muted">${q.cards.length} ${plural(q.cards.length,W.card,W.cards)}${G.x?` · ${(q.guild||[]).length} ${plural((q.guild||[]).length,W.guildCard,W.guildCards)}`:''}</div>`}
+      ${showHand?`<div class="hand">${q.cards.length?q.cards.map((c,i)=>`<button class="cardchip ${UI.mode===c?'armed':''}" data-card="${q.i}:${i}">${CARD_DEFS[c].name}</button>`).join(''):`<span class="muted">No ${W.cards}</span>`}${(q.guild||[]).map((c,i)=>`<button class="cardchip guild ${ICON('guild-card')?'ic':''}" data-guild="${q.i}:${i}" title="${W.guildCard}">${ICON('guild-card')?`<img class="gi" src="${ICON('guild-card')}" alt="">`:''}${guildName(c)}</button>`).join('')}</div>`:`<div class="stats muted">${q.cards.length} ${plural(q.cards.length,W.card,W.cards)}${G.x?` · <span data-stat="guild">${ICON('guild-card')?`<img class="gi" src="${ICON('guild-card')}" alt="">`:''}${(q.guild||[]).length} ${plural((q.guild||[]).length,W.guildCard,W.guildCards)}</span>`:''}</div>`}
       ${canRejoin?`<button class="btn" style="margin-top:8px" data-rejoin="${q.i}">This is me: play as ${esc(q.name)}</button>`:''}
     </div>`;}).join('');
   document.querySelectorAll('[data-card]').forEach(b=>b.onclick=()=>{const[a,c]=b.dataset.card.split(':');cardTap(+a,+c);});
@@ -1219,14 +1221,30 @@ function render(){
 }
 function drawBarrier(){
   const b=$('#board');if(!b)return;b.querySelectorAll('.barrier').forEach(x=>x.remove());
-  if(!G||!G.barrier)return;
+  const key0=G&&G.barrier?G.barrier.join('-')+':'+G.barrierOwner:null;
+  b.querySelectorAll('.barrier-ic').forEach(x=>{if(x.dataset.key!==key0)x.remove();});
+  if(!G||!G.barrier){BAR_LAST=G?{key:null,at:null}:null;return;}
   const ta=b.querySelector(`.tile[data-pl="${G.barrier[0]}"]`),tb=b.querySelector(`.tile[data-pl="${G.barrier[1]}"]`);if(!ta||!tb)return;
   const br=b.getBoundingClientRect(),ra=ta.getBoundingClientRect(),rb=tb.getBoundingClientRect();
-  const el=document.createElement('div');el.className='barrier c-'+G.players[G.barrierOwner].color;el.title=`${W.barrier[0].toUpperCase()+W.barrier.slice(1)} (${G.players[G.barrierOwner].name} may cross)`;
+  const ic=ICON('barricade');
+  const el=document.createElement('div');el.className='barrier c-'+G.players[G.barrierOwner].color+(ic?' has-ic':'');el.title=`${W.barrier[0].toUpperCase()+W.barrier.slice(1)} (${G.players[G.barrierOwner].name} may cross)`;
   if(Math.abs(ra.top-rb.top)<4){const x=(Math.max(ra.left,rb.left)+Math.min(ra.right,rb.right))/2-br.left;Object.assign(el.style,{left:(x-4)+'px',top:(ra.top-br.top+ra.height*.15)+'px',width:'8px',height:(ra.height*.7)+'px'});}
   else{const y=(Math.max(ra.top,rb.top)+Math.min(ra.bottom,rb.bottom))/2-br.top;Object.assign(el.style,{top:(y-4)+'px',left:(ra.left-br.left+ra.width*.15)+'px',height:'8px',width:(ra.width*.7)+'px'});}
   b.appendChild(el);
+  if(ic){const r=el.getBoundingClientRect();const key=G.barrier.join('-')+':'+G.barrierOwner;
+    let im=b.querySelector('.barrier-ic');const fresh=!im;
+    if(fresh){im=document.createElement('img');im.className='barrier-ic';im.src=ic;im.alt='';im.dataset.key=key;b.appendChild(im);}
+    const cx=r.left-br.left+r.width/2,cy=r.top-br.top+r.height/2;Object.assign(im.style,{left:(cx-20)+'px',top:(cy-20)+'px'});
+    if(!fresh){BAR_LAST={key,at:{x:cx,y:cy}};return;}
+    if(BAR_LAST!==null&&BAR_LAST.key!==key&&!REDUCED){
+      let from=BAR_LAST.at;if(!from){const sn=b.querySelector('.tile[data-pl="19"]');if(sn){const t=sn.getBoundingClientRect();from={x:t.left-br.left+t.width/2,y:t.top-br.top+t.height/2};}}
+      if(from)im.animate([{transform:`translate(${from.x-cx}px,${from.y-cy}px) scale(.8)`},{transform:`translate(${(from.x-cx)/2}px,${(from.y-cy)/2-50}px) scale(1.3)`,offset:.5},{transform:'translate(0,0) scale(1)'}],{duration:900,easing:'cubic-bezier(.45,0,.4,1)'});
+      el.animate([{opacity:0},{opacity:0,offset:.8},{opacity:1}],{duration:900});
+    }
+    BAR_LAST={key,at:{x:cx,y:cy}};
+  }
 }
+let BAR_LAST=null;
 addEventListener('resize',()=>{if(G)drawBarrier();});
 /* the handcart: one row per good, five slots; slots past your capacity wait for a crate */
 function cartHTML(q){
@@ -1341,6 +1359,27 @@ function flyPath(sx,sy,ex,ey,n,html,delay,onLand){
       {transform:`translate(${mx}px,${my}px) translate(-50%,-50%) scale(1.05)`,opacity:1,offset:.6},
       {transform:`translate(${ex}px,${ey}px) translate(-50%,-50%) scale(.85)`,opacity:1}],
       {duration:1000,delay:delay+110*k,easing:'cubic-bezier(.45,0,.4,1)',fill:'backwards'}).onfinish=()=>{el.remove();if(k===m-1&&onLand)onLand();};
+  }
+}
+/* badges, Snug favours and guild cards travel between their place on the board and the player's panel */
+function flyItems(i,was,now){
+  if(REDUCED||!G.x&&!ICON('badge-r'))return;
+  const card=document.querySelector(`.pl[data-pi="${i}"]`);if(!card)return;
+  const tile=pl=>document.querySelector(`#board .tile[data-pl="${pl}"]`);
+  const ctr=el=>{const r=el.getBoundingClientRect();return[r.left+r.width/2,r.top+r.height/2];};
+  const inView=el=>{if(!el)return false;const r=el.getBoundingClientRect();return r.width>0&&r.bottom>0&&r.top<innerHeight;};
+  const go=(fromEl,toEl,icon,size,delay,land)=>{if(!fromEl||!toEl||!inView(toEl)&&!inView(fromEl))return;const[a,b]=ctr(fromEl),[c,d]=ctr(toEl);
+    flyPath(a,b,c,d,1,`<img class="gi" src="${ICON(icon)}" alt="" style="width:${size}px;height:${size}px">`,delay,()=>{land&&land();toEl.animate([{transform:'scale(1)'},{transform:'scale(1.35)'},{transform:'scale(1)'}],{duration:320});});};
+  let k=0;
+  GOODS.forEach(c=>{if(now.badges&&was.badges&&now.badges[c]>was.badges[c]&&ICON('badge-'+c)){const to=card.querySelector(`[data-b="${c}"]`);go(tile(MOSQUE[14].includes(c)?14:15),to,'badge-'+c,40,150*k++);}});
+  ['m','e'].forEach(t=>{if(now.tt&&(now.tt[t]||0)>(was.tt&&was.tt[t]||0)){const to=card.querySelector(`[data-tt="${t}"]`);go(tile(19),to,t==='m'?'gutter-map':'friends',40,150*k++);}});
+  if(ICON('guild-card')&&now.guild!==was.guild){
+    const hand=card.querySelector('.cardchip.guild:last-of-type')||card.querySelector('[data-stat="guild"]');
+    const d=now.guild-was.guild;
+    for(let n=0;n<Math.min(Math.abs(d),3);n++){
+      if(d>0)go(tile(18),hand,'guild-card',36,150*k++);
+      else go(hand||card,tile(18),'guild-card',36,150*k++);
+    }
   }
 }
 /* spending: lifts off the player's board and drops onto the tile */

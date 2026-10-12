@@ -501,3 +501,17 @@ body.t-riverfair{--g-b:#b9c6e3}
 .here .who.c-red{color:#9a2b25}.here .who.c-green{color:#1f6e3b}.here .who.c-yellow{color:#8a6a00}.here .who.c-teal{color:#126c78}.here .who.c-white{color:#5a5a55}.here .who.c-grey{color:#555c6b}
 .here .who.npc{color:#5a3a1a;font-style:italic}
 .here .who[class*="c-"]{background:rgba(255,255,255,.7)}
+/* painted badges, favours, barricade, guild cards */
+.tiles4{display:inline-flex;gap:3px;align-items:center}
+.badge{display:inline-flex;width:24px;height:24px}
+.badge img.gi{width:24px;height:24px;vertical-align:0}
+.badge:not(.on) img{opacity:.22;filter:grayscale(1)}
+.tag.tt{display:inline-flex;align-items:center;gap:4px}
+.tag.tt img.gi{width:18px;height:18px;vertical-align:0}
+.cardchip.guild.ic::before{content:none}
+.cardchip.guild{display:inline-flex;align-items:center;gap:5px}
+.cardchip.guild img.gi{width:18px;height:22px;object-fit:contain}
+[data-stat="guild"] img.gi{width:14px;height:16px}
+.barrier.has-ic{opacity:.85;background:var(--pc,#fff);box-shadow:0 0 0 1px rgba(0,0,0,.3)}
+.barrier-ic{position:absolute;z-index:41;width:40px;height:40px;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5))}
+@media (max-width:600px){.barrier-ic{width:30px;height:30px;margin:5px}}
