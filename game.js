@@ -1528,7 +1528,7 @@ function rid(n){const a='abcdefghijkmnpqrstuvwxyz23456789';let s='';for(let i=0;
 function rcode(){const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<5;i++)s+=a[Math.floor(Math.random()*a.length)];return s;}
 const shareLink=code=>location.origin+location.pathname+'?game='+code;
 async function copyText(t){try{await navigator.clipboard.writeText(t);toast('Link copied');}catch(e){toast(t);}}
-function showScreen(name){['home','lobby','table'].forEach(n=>$('#'+n).hidden=n!==name);document.body.classList.toggle('on-home',name==='home');if(name!=='table'){$('#myStrip').hidden=true;$('#moveBar').hidden=true;fitDock();}if(name!=='table'){$('#roundInfo').textContent='';document.title=T.name;}$('#codeChip').hidden=!ON.code;if(ON.code)$('#codeChip').textContent='Game '+ON.code;}
+function showScreen(name){['home','lobby','table'].forEach(n=>$('#'+n).hidden=n!==name);document.body.classList.toggle('on-home',name==='home'||name==='lobby');document.body.classList.toggle('on-lobby',name==='lobby');if(name!=='table'){$('#myStrip').hidden=true;$('#moveBar').hidden=true;fitDock();}if(name!=='table'){$('#roundInfo').textContent='';document.title=T.name;}$('#codeChip').hidden=!ON.code;if(ON.code)$('#codeChip').textContent='Game '+ON.code;}
 
 /* ---------- online play (Firebase Realtime Database) ---------- */
 const FIREBASE_CONFIG={
@@ -1643,22 +1643,30 @@ function renderLobby(){
   const d=ON.data,seats=d.seats||[];const mine=seats.findIndex(s=>s.owner===ME);const here=d.presence||{};
   const open=seats.filter(s=>s.owner==='-').length;const link=shareLink(ON.code);
   const keepName=$('#joinName')?$('#joinName').value:(lsGet('riverfair-name')||'');
-  $('#lobby').innerHTML=`<div class="card panel">
-    <p class="eyebrow">Game ${ON.code}</p>
-    <h2>Gather the ${W.merchants}</h2>
-    <p>Send this link to your friends. They open it, take an open seat and type a name. No account needed.</p>
-    <div class="share"><code id="shareLink">${esc(link)}</code><button class="btn" id="copyBtn">Copy link</button></div>
-    ${mine<0&&open?`<label class="fld" for="joinName">Your name<input id="joinName" maxlength="16" value="${esc(keepName)}" placeholder="Your name"></label>`:''}
-    <h4>Seats</h4>
-    <div class="seats">${seats.map((s,i)=>{
-      const st=s.ai?`<span class="tag">AI ${W.merchant}</span>`:s.owner==='-'?'<span class="tag">Open seat</span>':`<span class="dot ${here[s.owner]?'on':''}"></span><span class="muted">${here[s.owner]?'Here':'Away'}</span>`;
+  const seated=seats.filter(s=>s.owner!=='-').length;
+  const portrait=(s,i)=>{const art=s.owner==='-'?'art/home/chair.webp':(T.art.merchants&&T.art.merchants[COLORS[i]]);
+    return `<span class="lb-por c-${COLORS[i]}">${art?`<img src="${art}" alt="">`:''}<i class="mer c-${COLORS[i]}"></i></span>`;};
+  $('#lobby').innerHTML=`<div class="lb-card">
+    <p class="lb-code-k">Game ${ON.code}</p>
+    <h2 class="lb-h">Gather the ${W.merchants}</h2>
+    <p class="lb-sub">Invite your friends. Take a seat. The market will open soon.</p>
+    <h3 class="lb-h3">Invite to your table</h3>
+    <div class="lb-invite"><span class="lb-code" id="shareLink" data-link="${esc(link)}">${ON.code}</span><button class="btn primary" id="copyBtn">🔗 Copy invite link</button></div>
+    <p class="lb-note">Friends can join in their browser. No account needed.</p>
+    <div class="hm-or"><span>◆</span></div>
+    <div class="lb-tablehead"><h3 class="lb-h3 big">Your table</h3><span>${seated} of ${seats.length} ${W.merchants} here</span></div>
+    ${mine<0&&open?`<label class="lb-name" for="joinName">Your name<input id="joinName" maxlength="16" value="${esc(keepName)}" placeholder="Type your name, then take a seat"></label>`:''}
+    <div class="lb-seats">${seats.map((s,i)=>{
+      const st=s.ai?`<span class="lb-tag">AI</span>`:s.owner==='-'?'<span class="lb-tag">Open seat</span>':`<span class="lb-here ${here[s.owner]?'on':''}"><i></i>${here[s.owner]?'Here':'Away'}</span>`;
       let act='';
       if(s.owner==='-'&&mine<0)act=`<button class="btn primary" data-take="${i}">Take this seat</button>`;
       if(mine>=0&&s.owner==='-')act=`<button class="btn" data-ai="${i}">Fill with AI</button>`;
       if(mine>=0&&s.ai)act=`<button class="btn" data-open="${i}">Open for a friend</button>`;
-      return `<div class="seat"><i class="mer c-${COLORS[i]}"></i><span class="nm">${s.owner==='-'?'Waiting for a friend':esc(s.name)}${s.owner===ME?' <span class="tag">You</span>':''}</span>${st}<span class="act">${act}</span></div>`;}).join('')}</div>
-    <div class="row">${mine>=0?`<button class="btn primary big" id="startBtn" ${open?'disabled':''}>${open?`Waiting for ${open} more ${plural(open,'player','players')}`:'Start the game'}</button>`:''}</div>
-    <p class="muted small">Board: ${{short:'Short paths',order:'In order',random:'Random'}[d.layout]||esc(d.layout)}${d.exp?` · with ${W.coffeeLong}`:''}. Any seated player can start once every seat is filled.</p></div>`;
+      return `<div class="lb-seat ${s.owner==='-'?'empty':''}">${portrait(s,i)}<span class="lb-nm">${s.owner==='-'?'Waiting for a friend':esc(s.name)}${s.owner===ME?' <span class="lb-tag you">You</span>':''}</span>${st}<span class="lb-act">${act}</span></div>`;}).join('')}</div>
+    ${mine>=0?`<button class="btn primary big lb-start" id="startBtn" ${open?'disabled':''}>${open?`Waiting for ${open} more ${plural(open,'player','players')}`:'Open the market'}</button><p class="lb-note c">Any seated player can start once every seat is filled.</p>`:''}
+    <div class="lb-foot"><span>${ICON('crate')?`<img src="${ICON('crate')}" alt="">`:''}Board: ${{short:'Short paths',order:'In order',random:'Random'}[d.layout]||esc(d.layout)}</span><span>${ICON('feather')?`<img src="${ICON('feather')}" alt="">`:''}${d.exp?(T.expName||'Expansion'):'Base game'}</span></div>
+  </div>
+  <p class="lb-quote">A seat saved. A market waiting.</p>`;
   $('#copyBtn').onclick=()=>copyText(link);
   document.querySelectorAll('[data-take]').forEach(b=>b.onclick=()=>takeSeat(+b.dataset.take));
   document.querySelectorAll('[data-ai]').forEach(b=>b.onclick=()=>ON.net.set(`games/${ON.code}/seats/${b.dataset.ai}`,{name:AI_NAMES[+b.dataset.ai]||W.merchant,ai:true,owner:'ai'}));
