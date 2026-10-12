@@ -686,3 +686,14 @@ body.on-lobby header.top #codeChip{display:none}
 @media (max-width:760px){body.on-lobby header.top{padding:10px 12px}.lb-quote{padding:0 16px;width:100%;box-sizing:border-box}}
 .lb-por img{transform:none;object-position:center}
 .portrait{background-size:cover!important;background-position:center!important}
+
+/* ---------- game screen: the painted tavern table ---------- */
+body.t-riverfair:not(.on-home){background:#2a170c url('art/home/table.webp') center/cover fixed no-repeat}
+body.t-riverfair:not(.on-home) header.top .brand h1{color:#fbf0d6;text-shadow:0 2px 6px rgba(0,0,0,.6)}
+body.t-riverfair:not(.on-home) #roundInfo{color:#e9dcbc}
+body.t-riverfair:not(.on-home) header.top .btn{background:rgba(30,18,8,.55);color:#fbf3df;border-color:rgba(251,243,223,.3);backdrop-filter:blur(3px)}
+body.t-riverfair:not(.on-home) .foot{color:#cdb894}
+body.t-riverfair:not(.on-home) .card,body.t-riverfair:not(.on-home) .banner{box-shadow:0 0 0 1px rgba(201,162,74,.6),0 10px 26px rgba(10,5,0,.5)}
+body.t-riverfair:not(.on-home) .board{box-shadow:0 0 0 1px rgba(201,162,74,.6),0 14px 34px rgba(10,5,0,.6),inset 0 1px 0 rgba(255,255,255,.18)}
+/* phones: no fixed backgrounds (they jitter on mobile scroll) */
+@media (max-width:760px){body.t-riverfair:not(.on-home){background-attachment:scroll;background-size:auto 100vh;background-position:center top;background-repeat:repeat-y}}
