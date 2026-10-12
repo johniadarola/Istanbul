@@ -684,3 +684,5 @@ body.on-lobby header.top #newBtn{display:inline-flex}
 .lb-por img{object-fit:cover;object-position:55% 0;transform:scale(1.9);transform-origin:55% 0%}
 body.on-lobby header.top #codeChip{display:none}
 @media (max-width:760px){body.on-lobby header.top{padding:10px 12px}.lb-quote{padding:0 16px;width:100%;box-sizing:border-box}}
+.lb-por img{transform:none;object-position:center}
+.portrait{background-size:cover!important;background-position:center!important}

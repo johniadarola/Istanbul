@@ -1209,7 +1209,7 @@ function render(){
     const me=q===p&&!G.over;const mine=ON.code?ownerOf(q)===ME:false;const away=ON.code&&!q.ai&&!(ON.data&&ON.data.presence&&ON.data.presence[ownerOf(q)]);const out=Object.entries(q.assist).map(([k,n])=>SHORT[k]+(n>1?' ×'+n:'')).join(', ');
     const showHand=ON.code?mine:(me&&!q.ai);
     const canRejoin=ON.code&&away&&!q.ai&&!G.players.some(x=>ownerOf(x)===ME);
-    const port=T.art.merchants&&T.art.merchants[q.color];
+    const port=PORT(q.color);
     return `<div class="pl" data-pi="${q.i}"><div class="plh">${port?`<span class="portrait c-${q.color}" style="background-image:url('${port}')"></span>`:`<i class="mer c-${q.color}"></i>`}<span class="nm">${esc(q.name)}</span>${q.ai?'<span class="tag">AI</span>':''}${mine?'<span class="tag">You</span>':''}${away?'<span class="tag">Away</span>':''}${me?'<span class="tag turn">Turn</span>':''}
       <span class="rubies" aria-label="${q.rubies} ${W.rubies}">${[...Array(tgt)].map((_,i)=>`<span class="${i<q.rubies?'ruby':'off'}">◆</span>`).join('')}${q.rubies>tgt?`<span class="ruby">+${q.rubies-tgt}</span>`:''}</span></div>
       <div class="stats"><span data-stat="lira"><b>${q.lira}</b> ${W.cur}</span>${G.x?`<span data-stat="coffee">${teaIc()} <b>${q.coffee}</b> ${W.coffee}</span>`:''}<span data-stat="ap"><b>${q.stack}</b> ${plural(q.stack,W.assistant,W.assistants)} along${out?` <span class="muted">· out: ${out}</span>`:''}</span><span class="muted">${W.family[0].toUpperCase()+W.family.slice(1)}: ${SHORT[q.family]}</span>${q.tt&&q.tt.m?`<span class="tag tt" data-tt="m" title="${TT_TEXT('m')}">${ICON('gutter-map')?`<img class="gi" src="${ICON('gutter-map')}" alt="">`:''}${W.moveTile}</span>`:''}${q.tt&&q.tt.e?`<span class="tag tt" data-tt="e" title="${TT_TEXT('e')}">${ICON('friends')?`<img class="gi" src="${ICON('friends')}" alt="">`:''}${W.encTile}</span>`:''}${G.x&&G.barrierOwner===q.i?`<span class="tag tt">${ICON('barricade')?`<img class="gi" src="${ICON('barricade')}" alt="">`:''}Holds the ${W.barrier}</span>`:''}
@@ -1415,6 +1415,8 @@ function flyOut(sx,sy,ex,ey,n,html,from){
       {duration:1100,delay:GAP(m)*k,easing:'cubic-bezier(.45,0,.4,1)',fill:'backwards'}).onfinish=()=>el.remove();
   }
 }
+/* close-up of a player's standee */
+const PORT=c=>{const a=T.art.merchants&&T.art.merchants[c];return a?a.replace('/standees/','/portraits/'):null;};
 /* ---------- physical cards ---------- */
 const I=(k,cls='')=>ICON(k)?`<img class="ci ${cls}" src="${ICON(k)}" alt="">`:'';
 const PT=pl=>{const a=T.art.tiles&&T.art.tiles[pl];return `<span class="cpl" ${a?`style="background-image:url('${a}')"`:''}><b>${pl}</b></span>`;};
@@ -1477,7 +1479,7 @@ function renderStrip(){
   const el=$('#myStrip');const q=stripPlayer();
   if(!q||$('#table').hidden){el.hidden=true;fitDock();return;}
   el.hidden=false;
-  const port=T.art.merchants&&T.art.merchants[q.color];
+  const port=PORT(q.color);
   const fe=ICON('feather');
   const turn=q===cur(G)&&!G.over;
   el.innerHTML=`<button class="ms-who ${turn?'turn':''}" id="msWho" aria-label="Show ${esc(q.name)}'s details">
@@ -1644,7 +1646,7 @@ function renderLobby(){
   const open=seats.filter(s=>s.owner==='-').length;const link=shareLink(ON.code);
   const keepName=$('#joinName')?$('#joinName').value:(lsGet('riverfair-name')||'');
   const seated=seats.filter(s=>s.owner!=='-').length;
-  const portrait=(s,i)=>{const art=s.owner==='-'?'art/home/chair.webp':(T.art.merchants&&T.art.merchants[COLORS[i]]);
+  const portrait=(s,i)=>{const art=s.owner==='-'?'art/home/chair.webp':PORT(COLORS[i]);
     return `<span class="lb-por c-${COLORS[i]}">${art?`<img src="${art}" alt="">`:''}<i class="mer c-${COLORS[i]}"></i></span>`;};
   $('#lobby').innerHTML=`<div class="lb-card">
     <p class="lb-code-k">Game ${ON.code}</p>
