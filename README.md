@@ -2,7 +2,7 @@
 
 A market race beneath the Avian Ascendancy. Push your handcart through the stalls of Riverfair with your apprentices, trade wool, herbs, honey and pearls, and win Gold Feathers. Play online with friends or against AI traders.
 
-**Play:** https://johniadarola.github.io/Istanbul/
+**Play:** https://johniadarola.github.io/Riverfair/
 
 ## Modes
 - **Play online:** create a game, send the link, and friends join in their browser with no account. Empty seats can be AI traders. Turns sync live through Firebase Realtime Database, and anyone can close the tab and come back.
