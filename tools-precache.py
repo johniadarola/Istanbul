@@ -1,7 +1,7 @@
 # Regenerates the offline file list inside sw.js. Run after adding art: python3 tools-precache.py VERSION
 import os,sys,re
 v=sys.argv[1]
-files=['./','index.html','style.css','game.js','themes/istanbul.js','themes/riverfair.js','manifest-riverfair.webmanifest','manifest-istanbul.webmanifest']
+files=['./','index.html','style.css','game.js','themes/riverfair.js','manifest.webmanifest']
 for root,_,fs in os.walk('art'):
     for f in sorted(fs):
         if f.endswith(('.webp','.png')):files.append(os.path.join(root,f))

@@ -1,4 +1,4 @@
-/* Istanbul-style bazaar game: rules engine, AI, interface, effects and online play.
+/* Riverfair: rules engine, AI, interface, effects and online play.
    All player-facing names come from THEME (themes/*.js). */
 const $=s=>document.querySelector(s);
 const T=window.THEME, W=T.words;
@@ -8,7 +8,7 @@ const PNAME={},SHORT={},PDESC={};
 for(let i=1;i<=20;i++)if(T.places[i]){PNAME[i]=T.places[i].name;SHORT[i]=T.places[i].short;PDESC[i]=T.places[i].desc;}
 const KIND={1:'ruby',2:'goods',3:'goods',4:'goods',5:'util',6:'util',7:'util',8:'goods',9:'money',10:'money',11:'money',12:'util',13:'ruby',14:'ruby',15:'ruby',16:'ruby',17:'goods',18:'util',19:'util',20:'ruby'};
 const LAYOUTS={short:[15,5,2,14,4,12,7,3,8,6,11,9,13,10,1,16],order:[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]};
-/* expansion (Mocha & Baksheesh): 20 places in 5 columns x 4 rows; "short" is the rulebook's first-game layout */
+/* expansion: 20 places in 5 columns x 4 rows; "short" is the recommended first-game layout */
 const LAYOUTS20={short:[16,15,18,3,10,8,1,7,17,4,2,19,6,12,9,20,11,5,14,13],order:[...Array(20)].map((_,i)=>i+1)};
 const DICE_GIFT={1:'lira',2:'y',3:'g',4:'r',5:'b',6:'coffee'};
 const POST_TOP=[{g:'r'},{l:2},{g:'b'},{l:2}], POST_BOT=[{g:'g'},{l:1},{g:'y'},{l:1}];
@@ -16,19 +16,21 @@ const POST_TOP=[{g:'r'},{l:2},{g:'b'},{l:2}], POST_BOT=[{g:'g'},{l:1},{g:'y'},{l
 const SMALL_TILES=[['g','r','g','y','b'],['r','g','y','g','g'],['g','y','g','y','r'],['y','r','y','g','b'],['g','y','g','y','b']];
 const LARGE_TILES=[['r','b','r','b','g'],['g','b','y','b','r'],['r','b','g','b','b'],['r','b','r','b','y'],['r','b','y','b','b']];
 const REV={10:[0,3,7,12,18,25],11:[0,2,5,9,14,20]};
-const SULTAN_SEQ=['b','r','g','y','*','b','r','g','y','*'];
-const MOSQUE={14:['r','g'],15:['y','b']};
+const ENVOY_SEQ=['b','r','g','y','*','b','r','g','y','*'];
+const LODGE={14:['r','g'],15:['y','b']};
 const TILE_ABIL=T.tileAbil;
-const CARD_COUNTS={good:4,lira5:4,dSultan:2,dPost:2,dGem:2,family:2,stay:2,move34:4,recall:2,smAny:2};
+const CARD_COUNTS={good:4,lira5:4,dEnvoy:2,dPost:2,dGem:2,family:2,stay:2,move34:4,recall:2,smAny:2};
 const EXP_CARDS={tea2:2,gcard:2,tea8:2,diceGift:2,swap3:2,six:2,corner:2,dWain:2,dCH:2};
-const TT_COST=[1,2,3,4];               // Tavern tiles: cost of each tile in a pile, top first (as printed)
-const BAK_SIDES=[['y','y','y'],['r','b','g']]; // goods asked by the two sides of the Baksheesh tile
+const TT_COST=[1,2,3,4];               // Snug favours: cost of each tile in a pile, top first
+const BRIBE_SIDES=[['y','y','y'],['r','b','g']]; // goods asked by the two sides of the bribe slate
 Object.assign(CARD_COUNTS,EXP_CARDS);
 const CARD_DEFS={};for(const k in CARD_COUNTS)if(T.cards[k])CARD_DEFS[k]={n:CARD_COUNTS[k],...T.cards[k]};
 const COLORS=['red','green','yellow','teal','white'];
 const AI_NAMES=T.aiNames;
-const STORE='istanbul-table-v1';
-const PREVIEW=(()=>{const q=new URLSearchParams(location.search);try{if(q.has('preview'))localStorage.setItem('istanbul-preview','1');if(q.get('preview')==='off')localStorage.removeItem('istanbul-preview');return !!localStorage.getItem('istanbul-preview');}catch(e){return q.has('preview');}})();
+const STORE='riverfair-table-v1';
+(function(){try{['table-v1','name','sound','me','preview'].forEach(k=>{const o='istan'+'bul-'+k,n='riverfair-'+k;
+  [localStorage,sessionStorage].forEach(st=>{if(st.getItem(n)==null&&st.getItem(o)!=null)st.setItem(n,st.getItem(o));});});}catch(e){}})();
+const PREVIEW=(()=>{const q=new URLSearchParams(location.search);try{if(q.has('preview'))localStorage.setItem('riverfair-preview','1');if(q.get('preview')==='off')localStorage.removeItem('riverfair-preview');return !!localStorage.getItem('riverfair-preview');}catch(e){return q.has('preview');}})();
 const ABORT={abort:true};
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 let G=null, GEN=0;
@@ -48,17 +50,23 @@ const winTarget=g=>g.x?6:(g.players.length===2?6:5);
 const COLS=g=>g.cols||4;
 function rc(g,pl){const C=COLS(g);const i=g.layout.indexOf(pl);return[Math.floor(i/C),i%C];}
 function dist(g,a,b){const[x1,y1]=rc(g,a),[x2,y2]=rc(g,b);return Math.abs(x1-x2)+Math.abs(y1-y2);}
-/* Sultan's track: blue, red, green, yellow, any, blue, red, green, yellow, any. 4–5 players start with 4 goods uncovered, 2–3 with 5 */
-const sultanReq=g=>SULTAN_SEQ.slice(0,(g.sultanStart||4)+g.sultanTaken);
+/* Envoy's track: blue, red, green, yellow, any, blue, red, green, yellow, any. 4–5 players start with 4 goods uncovered, 2–3 with 5 */
+const envoyReq=g=>ENVOY_SEQ.slice(0,(g.envoyStart||4)+g.envoyTaken);
 /* Gemstone Dealer's track runs 12–23: 4–5 players start at 12, 3 players at 14, 2 players at 15 */
 const gemPrice=g=>(g.gemStart||12)+g.gemTaken;
 const hasCard=(p,t)=>p.cards.includes(t);
 const cardOK=(ctx,p,t)=>!ctx.noCards&&hasCard(p,t); // place cards can't be used during a guild card's action
 function drawGuild(g){RNG_N++;if(!g.guildDeck.length)g.guildDeck=shuffle(g.guildDiscard.splice(0));return g.guildDeck.pop()||null;}
-function upgradeState(g){ // games saved before guild cards and the Snug existed
-  if(!g||!g.x)return g;
+function upgradeState(g){ // games saved by earlier versions
+  if(!g)return g;
+  const mv=(o,a,b)=>{if(o&&o[a]!==undefined&&o[b]===undefined){o[b]=o[a];delete o[a];}};
+  mv(g,'sultan'+'Taken','envoyTaken');mv(g,'sultan'+'Start','envoyStart');mv(g,'sultan'+'Rubies','envoyRubies');
+  mv(g,'mos'+'que','lodge');mv(g,'mos'+'queRubies','lodgeRubies');mv(g,'b'+'ak','bribe');
+  const fix=a=>a&&a.forEach((c,i)=>{if(c==='dSul'+'tan')a[i]='dEnvoy';});
+  fix(g.deck);fix(g.discard);(g.players||[]).forEach(p=>fix(p.cards));
+  if(!g.x)return g;
   if(!g.guildDeck){g.guildDeck=shuffle([...Array(20)].map((_,i)=>i+1));g.guildDiscard=[];}
-  if(!g.tt){g.tt={m:TT_COST.slice(),e:TT_COST.slice()};g.bak=0;g.barrier=null;g.barrierOwner=null;}
+  if(!g.tt){g.tt={m:TT_COST.slice(),e:TT_COST.slice()};g.bribe=0;g.barrier=null;g.barrierOwner=null;}
   g.players.forEach(p=>{if(!p.guild)p.guild=[];if(!p.tt)p.tt={m:0,e:0};});
   return g;
 }
@@ -67,8 +75,8 @@ function drawCard(g,fromDiscard){RNG_N++;if(fromDiscard&&g.discard.length)return
 const totalGoods=p=>GOODS.reduce((s,c)=>s+p.goods[c],0);
 function tileCount(t){const o={r:0,g:0,y:0,b:0};t.forEach(c=>o[c]++);return o;}
 function probAtLeast(n){let k=0;for(let a=1;a<=6;a++)for(let b=1;b<=6;b++)if(a+b>=n)k++;return k/36;}
-function canPaySultan(p,req){const need={r:0,g:0,y:0,b:0};let any=0;req.forEach(x=>x==='*'?any++:need[x]++);for(const c of GOODS)if(p.goods[c]<need[c])return false;return GOODS.reduce((s,c)=>s+p.goods[c]-need[c],0)>=any;}
-function sultanMissing(p,req){const need={r:0,g:0,y:0,b:0};let any=0;req.forEach(x=>x==='*'?any++:need[x]++);let miss=0,spare=0;for(const c of GOODS){miss+=Math.max(0,need[c]-p.goods[c]);spare+=Math.max(0,p.goods[c]-need[c]);}return miss+Math.max(0,any-spare);}
+function canPayEnvoy(p,req){const need={r:0,g:0,y:0,b:0};let any=0;req.forEach(x=>x==='*'?any++:need[x]++);for(const c of GOODS)if(p.goods[c]<need[c])return false;return GOODS.reduce((s,c)=>s+p.goods[c]-need[c],0)>=any;}
+function envoyMissing(p,req){const need={r:0,g:0,y:0,b:0};let any=0;req.forEach(x=>x==='*'?any++:need[x]++);let miss=0,spare=0;for(const c of GOODS){miss+=Math.max(0,need[c]-p.goods[c]);spare+=Math.max(0,p.goods[c]-need[c]);}return miss+Math.max(0,any-spare);}
 function postItems(g){return[0,1,2,3].map(i=>i<g.post?POST_TOP[i]:POST_BOT[i]);}
 const ICON=k=>(window.THEME&&THEME.art&&THEME.art.icons&&THEME.art.icons[k])||null;
 const GICON={r:'wool',g:'herbs',y:'honey',b:'pearls','*':'any'};
@@ -134,13 +142,13 @@ function newGame(cfg){
   const reqs=n===2?[2,4]:n===3?[2,3,4]:[2,3,4,5];
   const g={id:Math.random().toString(36).slice(2,10),x,cols:x?5:4,players,layout,deck,discard:[],post:0,
     trader:x?rollSum():null,chTaken:0,chRubies:4,
-    guildDeck:x?shuffle([...Array(20)].map((_,i)=>i+1)):[],guildDiscard:[],tt:{m:TT_COST.slice(),e:TT_COST.slice()},bak:0,barrier:null,barrierOwner:null,
+    guildDeck:x?shuffle([...Array(20)].map((_,i)=>i+1)):[],guildDiscard:[],tt:{m:TT_COST.slice(),e:TT_COST.slice()},bribe:0,barrier:null,barrierOwner:null,
     neutrals:n===2?[{color:'grey',pos:14},{color:'grey',pos:15},{color:'grey',pos:16}]:[],
     gov:rollSum(),smug:rollSum(),
     small:shuffle(SMALL_TILES.map(t=>t.slice())),large:shuffle(LARGE_TILES.map(t=>t.slice())),
-    mosque:{r:reqs.slice(),g:reqs.slice(),y:reqs.slice(),b:reqs.slice()},
-    mosqueRubies:{14:n===5?4:n,15:n===5?4:n},wainRubies:n,
-    sultanTaken:0,sultanStart:n<=3?5:4,sultanRubies:n<=3?6:7,gemTaken:0,gemStart:n===2?15:n===3?14:12,gemRubies:n===2?9:n===3?10:12,
+    lodge:{r:reqs.slice(),g:reqs.slice(),y:reqs.slice(),b:reqs.slice()},
+    lodgeRubies:{14:n===5?4:n,15:n===5?4:n},wainRubies:n,
+    envoyTaken:0,envoyStart:n<=3?5:4,envoyRubies:n<=3?6:7,gemTaken:0,gemStart:n===2?15:n===3?14:12,gemRubies:n===2?9:n===3?10:12,
     current:start,start,round:1,endTriggered:false,over:false,result:null,log:[],lastRoll:null,layoutName:cfg.layout,cfg};
   g.log.unshift({t:`${players[start].name} starts. First to ${winTarget(g)} ${W.rubies} ends the game.`,c:players[start].color});
   return g;
@@ -295,26 +303,26 @@ async function doAction(ctx,p,place){
   case 13:{
     let times=0;
     for(;;){
-      if(g.sultanTaken>=g.sultanRubies){if(!times)note(ctx,p,`${NSC('king')} has no ${W.rubies} left.`);break;}
-      const req=sultanReq(g);
-      if(!canPaySultan(p,req)){if(!times)note(ctx,p,`${NSC('king')} wants ${req.length} goods you don't have.`);break;}
-      if(times===0){if(!await decide(ctx,p,'confirm',{key:'sultan',title:PNAME[13],text:`Deliver ${req.length} goods for a ${W.ruby}? <span class="chips">${req.map(chip).join('')}</span>`,yes:'Deliver'}))break;}
-      else{if(!cardOK(ctx,p,'dSultan')||!await decide(ctx,p,'confirm',{key:'dSultan',title:CARD_DEFS.dSultan.name,text:`Play your ${W.card} to deliver again? <span class="chips">${req.map(chip).join('')}</span>`,yes:'Play card'}))break;useCard(g,p,'dSultan');}
+      if(g.envoyTaken>=g.envoyRubies){if(!times)note(ctx,p,`${NSC('king')} has no ${W.rubies} left.`);break;}
+      const req=envoyReq(g);
+      if(!canPayEnvoy(p,req)){if(!times)note(ctx,p,`${NSC('king')} wants ${req.length} goods you don't have.`);break;}
+      if(times===0){if(!await decide(ctx,p,'confirm',{key:'envoy',title:PNAME[13],text:`Deliver ${req.length} goods for a ${W.ruby}? <span class="chips">${req.map(chip).join('')}</span>`,yes:'Deliver'}))break;}
+      else{if(!cardOK(ctx,p,'dEnvoy')||!await decide(ctx,p,'confirm',{key:'dEnvoy',title:CARD_DEFS.dEnvoy.name,text:`Play your ${W.card} to deliver again? <span class="chips">${req.map(chip).join('')}</span>`,yes:'Play card'}))break;useCard(g,p,'dEnvoy');}
       req.forEach(x=>{if(x!=='*')p.goods[x]--;});
-      for(const x of req)if(x==='*'){const opts=GOODS.filter(c=>p.goods[c]>0);const c=await decide(ctx,p,'pickGood',{key:'sultanAny',title:'Any good',text:'Pick the good to give for the open slot.',options:opts});p.goods[c]--;}
-      g.sultanTaken++;gainRuby(ctx,p,PNAME[13]);times++;
+      for(const x of req)if(x==='*'){const opts=GOODS.filter(c=>p.goods[c]>0);const c=await decide(ctx,p,'pickGood',{key:'envoyAny',title:'Any good',text:'Pick the good to give for the open slot.',options:opts});p.goods[c]--;}
+      g.envoyTaken++;gainRuby(ctx,p,PNAME[13]);times++;
     }
     break;}
   case 14:case 15:{
-    const cols=MOSQUE[place];
-    const opts=cols.filter(c=>!p.tiles[c]&&g.mosque[c].length&&p.goods[c]>=g.mosque[c][0]);
+    const cols=LODGE[place];
+    const opts=cols.filter(c=>!p.tiles[c]&&g.lodge[c].length&&p.goods[c]>=g.lodge[c][0]);
     if(!opts.length){note(ctx,p,`You can't claim a ${W.tile} here yet.`);break;}
-    const c=await decide(ctx,p,'mosqueColor',{options:opts});
+    const c=await decide(ctx,p,'lodgeColor',{options:opts});
     if(!c)break;
-    const req=g.mosque[c].shift();p.goods[c]--;p.tiles[c]=1;
+    const req=g.lodge[c].shift();p.goods[c]--;p.tiles[c]=1;
     log(ctx,`${p.name} claims the ${GNAME[c]} ${W.tile} (showed ${req}).`,p);
     if(c==='b'){p.stack++;log(ctx,`${p.name} gains a 5th ${W.assistant}.`,p);}
-    if(cols.every(x=>p.tiles[x])&&g.mosqueRubies[place]>0){g.mosqueRubies[place]--;gainRuby(ctx,p,PNAME[place]);}
+    if(cols.every(x=>p.tiles[x])&&g.lodgeRubies[place]>0){g.lodgeRubies[place]--;gainRuby(ctx,p,PNAME[place]);}
     break;}
   case 16:{
     let times=0;
@@ -366,14 +374,14 @@ async function doAction(ctx,p,place){
   }
 }
 /* ---------- Gutterlane Snug / Tavern ---------- */
-const BAK_PLACES=[13,16,20];
-function bakRubyPlaces(g){return BAK_PLACES.filter(pl=>pl===13?g.sultanTaken<g.sultanRubies:pl===16?g.gemTaken<g.gemRubies:g.chTaken<g.chRubies);}
+const BRIBE_PLACES=[13,16,20];
+function bribeRubyPlaces(g){return BRIBE_PLACES.filter(pl=>pl===13?g.envoyTaken<g.envoyRubies:pl===16?g.gemTaken<g.gemRubies:g.chTaken<g.chRubies);}
 function canPayGoods(p,list){const n={r:0,g:0,y:0,b:0};list.forEach(c=>n[c]++);return GOODS.every(c=>p.goods[c]>=n[c]);}
 function snugOptions(g,p){
   const o=[{k:'barrier',cost:2}];
   if(!p.tt.m&&g.tt.m.length)o.push({k:'tm',cost:g.tt.m[0]});
   if(!p.tt.e&&g.tt.e.length)o.push({k:'te',cost:g.tt.e[0]});
-  if(bakRubyPlaces(g).length&&canPayGoods(p,BAK_SIDES[g.bak]))o.push({k:'bak',cost:4});
+  if(bribeRubyPlaces(g).length&&canPayGoods(p,BRIBE_SIDES[g.bribe]))o.push({k:'bribe',cost:4});
   return o;
 }
 async function snugAction(ctx,p,times,discount){
@@ -385,11 +393,11 @@ async function snugAction(ctx,p,times,discount){
     if(!k)break;
     const o=opts.find(x=>x.k===k);p.coffee-=o.pay;disc=Math.max(0,disc-o.cost);used[k]=1;done++;
     if(k==='tm'||k==='te'){const t=k==='tm'?'m':'e';g.tt[t].shift();p.tt[t]=1;log(ctx,`${p.name} pays ${TEA(o.pay)} for the ${t==='m'?W.moveTile:W.encTile}.`,p);}
-    else if(k==='bak'){
-      BAK_SIDES[g.bak].forEach(c=>p.goods[c]--);
-      const pl=await decide(ctx,p,'bakRuby',{options:bakRubyPlaces(g)});
-      if(pl===13)g.sultanTaken++;else if(pl===16)g.gemTaken++;else g.chTaken++;
-      g.bak^=1;log(ctx,`${p.name} pays ${TEA(o.pay)} and goods at the ${PNAME[19]}.`,p);gainRuby(ctx,p,PNAME[pl]);
+    else if(k==='bribe'){
+      BRIBE_SIDES[g.bribe].forEach(c=>p.goods[c]--);
+      const pl=await decide(ctx,p,'bribeRuby',{options:bribeRubyPlaces(g)});
+      if(pl===13)g.envoyTaken++;else if(pl===16)g.gemTaken++;else g.chTaken++;
+      g.bribe^=1;log(ctx,`${p.name} pays ${TEA(o.pay)} and goods at the ${PNAME[19]}.`,p);gainRuby(ctx,p,PNAME[pl]);
     }
     else await placeBarrier(ctx,p,o.pay);
   }
@@ -430,14 +438,14 @@ function guildText(n){
     20:`Take the next ${W.ruby} at the ${PNAME[20]} for half its price, rounded up.`}[n];
 }
 const GUILD_VAL={1:6,2:5,3:5,4:5,5:8,6:6,7:5,8:6,9:5,10:6,11:7,12:7,13:9,14:7,15:7,16:9,17:7,18:5,19:6,20:9};
-function mosqueGuildOpts(g,p,pl){return MOSQUE[pl].filter(c=>!p.tiles[c]&&g.mosque[c].length&&p.goods[c]>=1);}
+function lodgeGuildOpts(g,p,pl){return LODGE[pl].filter(c=>!p.tiles[c]&&g.lodge[c].length&&p.goods[c]>=1);}
 function guildPlayable(g,p,n){
   switch(n){
   case 1:return p.ext<3;
   case 10:return p.goods.r>0&&p.goods.g>0&&p.goods.y>0;
   case 11:return p.goods.b>0&&p.goods.r>0&&p.goods.g>0;
-  case 13:return totalGoods(p)>=6&&g.sultanTaken<g.sultanRubies;
-  case 14:case 15:return mosqueGuildOpts(g,p,n).length>0;
+  case 13:return totalGoods(p)>=6&&g.envoyTaken<g.envoyRubies;
+  case 14:case 15:return lodgeGuildOpts(g,p,n).length>0;
   case 16:return p.lira>=15&&g.gemTaken<g.gemRubies;
   case 19:return snugOptions(g,p).some(o=>p.coffee>=Math.max(0,o.cost-1));
   case 20:return g.chTaken<g.chRubies&&p.coffee>=Math.ceil(chCost(g)/2);
@@ -474,11 +482,11 @@ async function playGuild(ctx,p,n){
   case 12:{const t=await decide(gc,p,'policeTarget',{options:g.layout.filter(x=>x!==12),title:guildName(12),text:"Choose any place and take its action. No assistant needed and no encounters."});
     if(t!=null){log(ctx,`${p.name} takes the ${PNAME[t]} action.`,p);await doAction(gc,p,t);}
     if(p.family!==12){p.family=12;log(ctx,`${p.name}'s ${W.family} goes back to the ${PNAME[12]}.`,p);}break;}
-  case 13:{const sel=await decide(ctx,p,'payGoods',{n:6,title:guildName(13)});GOODS.forEach(c=>p.goods[c]-=sel[c]);g.sultanTaken++;gainRuby(ctx,p,PNAME[13]);break;}
-  case 14:case 15:{const c=await decide(ctx,p,'mosqueColor',{options:mosqueGuildOpts(g,p,n),cheap:true});const cols=MOSQUE[n];
-    g.mosque[c].shift();p.goods[c]--;p.tiles[c]=1;log(ctx,`${p.name} claims the ${GNAME[c]} ${W.tile}.`,p);
+  case 13:{const sel=await decide(ctx,p,'payGoods',{n:6,title:guildName(13)});GOODS.forEach(c=>p.goods[c]-=sel[c]);g.envoyTaken++;gainRuby(ctx,p,PNAME[13]);break;}
+  case 14:case 15:{const c=await decide(ctx,p,'lodgeColor',{options:lodgeGuildOpts(g,p,n),cheap:true});const cols=LODGE[n];
+    g.lodge[c].shift();p.goods[c]--;p.tiles[c]=1;log(ctx,`${p.name} claims the ${GNAME[c]} ${W.tile}.`,p);
     if(c==='b'){p.stack++;log(ctx,`${p.name} gains a 5th ${W.assistant}.`,p);}
-    if(cols.every(x=>p.tiles[x])&&g.mosqueRubies[n]>0){g.mosqueRubies[n]--;gainRuby(ctx,p,PNAME[n]);}break;}
+    if(cols.every(x=>p.tiles[x])&&g.lodgeRubies[n]>0){g.lodgeRubies[n]--;gainRuby(ctx,p,PNAME[n]);}break;}
   case 16:p.lira-=15;g.gemTaken++;gainRuby(ctx,p,PNAME[16]);p.coffee+=p.rubies;log(ctx,`${p.name} takes ${TEA(p.rubies)}.`,p);break;
   case 17:p.coffee+=5;log(ctx,`${p.name} takes ${TEA(5)}.`,p);break;
   case 18:{p.coffee++;for(let k=0;k<2;k++){const c=drawGuild(g);if(c)p.guild.push(c);}log(ctx,`${p.name} takes ${TEA(1)} and draws 2 ${W.guildCards}.`,p);break;}
@@ -515,14 +523,14 @@ async function decide(ctx,p,kind,d={}){
 }
 function need(g,p){
   const s={r:0,g:0,y:0,b:0};
-  if(g.sultanTaken<g.sultanRubies){const cnt={r:0,g:0,y:0,b:0};sultanReq(g).forEach(x=>{if(x!=='*')cnt[x]++;});GOODS.forEach(c=>{if(p.goods[c]<cnt[c])s[c]+=3*(cnt[c]-p.goods[c]);});}
-  [14,15].forEach(pl=>MOSQUE[pl].forEach(c=>{if(!p.tiles[c]&&g.mosque[c].length&&p.goods[c]<g.mosque[c][0])s[c]+=2;}));
+  if(g.envoyTaken<g.envoyRubies){const cnt={r:0,g:0,y:0,b:0};envoyReq(g).forEach(x=>{if(x!=='*')cnt[x]++;});GOODS.forEach(c=>{if(p.goods[c]<cnt[c])s[c]+=3*(cnt[c]-p.goods[c]);});}
+  [14,15].forEach(pl=>LODGE[pl].forEach(c=>{if(!p.tiles[c]&&g.lodge[c].length&&p.goods[c]<g.lodge[c][0])s[c]+=2;}));
   GOODS.forEach(c=>{if(c==='b')s[c]+=.5;if(p.goods[c]>=cap(p))s[c]=-99;});
   return s;
 }
 const bestGood=(g,p,opts)=>{const s=need(g,p);return opts.slice().sort((a,b)=>s[b]-s[a]||p.goods[a]-p.goods[b])[0];};
 const spareGood=(g,p,opts)=>{const s=need(g,p);return opts.slice().sort((a,b)=>(p.goods[b]-p.goods[a])||(s[a]-s[b]))[0];};
-const CARD_VAL={gcard:5,lira5:9,good:8,family:6,move34:5,dGem:4,dSultan:4,recall:4,dPost:4,smAny:3,stay:2,tea2:6,tea8:6,diceGift:6,swap3:2,six:3,corner:4,dWain:3,dCH:4};
+const CARD_VAL={gcard:5,lira5:9,good:8,family:6,move34:5,dGem:4,dEnvoy:4,recall:4,dPost:4,smAny:3,stay:2,tea2:6,tea8:6,diceGift:6,swap3:2,six:3,corner:4,dWain:3,dCH:4};
 const worstCard=p=>{let bi=0;p.cards.forEach((c,i)=>{if(CARD_VAL[c]<CARD_VAL[p.cards[bi]])bi=i;});return bi;};
 
 async function aiDecide(ctx,p,kind,d){
@@ -535,7 +543,7 @@ async function aiDecide(ctx,p,kind,d){
     return true;
   case 'pickGood':
     if(d.key==='green'&&p.lira<4)return null;
-    if(d.key==='sultanAny')return spareGood(g,p,d.options);
+    if(d.key==='envoyAny')return spareGood(g,p,d.options);
     return bestGood(g,p,d.options);
   case 'pickNumber':return p.tiles.r?8:6;
   case 'dice':{const s=d.dice[0]+d.dice[1],lo=Math.min(...d.dice),four=s-lo+4;
@@ -548,7 +556,7 @@ async function aiDecide(ctx,p,kind,d){
     return sel;}
   case 'cardSource':return(d.top==='lira5'||d.top==='good')?'discard':'deck';
   case 'discardCard':return worstCard(p);
-  case 'mosqueColor':return['b','y','r','g'].find(c=>d.options.includes(c));
+  case 'lodgeColor':return['b','y','r','g'].find(c=>d.options.includes(c));
   case 'policeTarget':{
     const depth=ctx.depth||0;
     if(depth>=2)return d.options.includes(16)&&p.lira>=gemPrice(g)?16:3;
@@ -571,13 +579,13 @@ async function aiDecide(ctx,p,kind,d){
   case 'discardKind':return p.cards.length&&CARD_VAL[p.cards[worstCard(p)]]<=4?'bonus':(p.guild.length?'guild':'bonus');
   case 'payGoods':{const sel={r:0,g:0,y:0,b:0};let left=d.n;while(left>0){const c=GOODS.slice().sort((a,b)=>(p.goods[b]-sel[b])-(p.goods[a]-sel[a])||(a==='b')-(b==='b'))[0];sel[c]++;left--;}return sel;}
   case 'snug':{const has=k=>d.opts.some(o=>o.k===k);
-    if(has('bak'))return 'bak';
+    if(has('bribe'))return 'bribe';
     if(has('tm')&&p.coffee>=d.opts.find(o=>o.k==='tm').pay+1)return 'tm';
     if(has('te')&&(d.opts.find(o=>o.k==='te').pay<=2))return 'te';
     if(has('barrier')&&(d.n>0||g.chTaken>=g.chRubies||p.coffee>=chCost(g)+2))return 'barrier';
     return d.n>0?null:(d.opts[0]&&d.opts[0].k==='barrier'&&p.coffee>=4?'barrier':null);}
   case 'barrierSide':{const opp=g.players.filter(q=>q!==p).map(q=>q.pos);return d.options.find(x=>opp.includes(x))||d.options[0];}
-  case 'bakRuby':return [16,13,20].find(x=>d.options.includes(x));
+  case 'bribeRuby':return [16,13,20].find(x=>d.options.includes(x));
   case 'smugPay':{if(p.lira>=6)return 'lira';const opts=GOODS.filter(c=>p.goods[c]>0);if(!opts.length)return 'lira';return spareGood(g,p,opts);}
   }
 }
@@ -589,11 +597,11 @@ function evalPlayer(g,p){
   v+=(p.tiles.r?13:0)+(p.tiles.g?11:0)+(p.tiles.y?15:0)+(p.tiles.b?11:0);
   v+=p.stack*3;
   if(p.stack===0){v-=8;if([7,...Object.keys(p.assist).map(Number)].some(pl=>dist(g,p.pos,pl)<=2))v+=5;}
-  if(g.sultanTaken<g.sultanRubies){const req=sultanReq(g);const nd={r:0,g:0,y:0,b:0};let any=0;req.forEach(x=>x==='*'?any++:nd[x]++);
+  if(g.envoyTaken<g.envoyRubies){const req=envoyReq(g);const nd={r:0,g:0,y:0,b:0};let any=0;req.forEach(x=>x==='*'?any++:nd[x]++);
     let have=0;GOODS.forEach(c=>have+=Math.min(p.goods[c],nd[c]));const extra=GOODS.reduce((s,c)=>s+Math.max(0,p.goods[c]-nd[c]),0);have+=Math.min(any,extra);
     const f=have/req.length;v+=14*f*f;}
   if(g.gemTaken<g.gemRubies){const f=Math.min(1,p.lira/gemPrice(g));v+=10*f*f;}
-  [14,15].forEach(pl=>MOSQUE[pl].forEach(c=>{if(!p.tiles[c]&&g.mosque[c].length){const f=Math.min(1,p.goods[c]/g.mosque[c][0]);v+=6*f*f;}}));
+  [14,15].forEach(pl=>LODGE[pl].forEach(c=>{if(!p.tiles[c]&&g.lodge[c].length){const f=Math.min(1,p.goods[c]/g.lodge[c][0]);v+=6*f*f;}}));
   if(p.ext<3)v+=Math.min(1,p.lira/7)*4;
   if(g.x){v+=(p.guild?p.guild.length:0)*4+(p.tt&&p.tt.m?10:0)+(p.tt&&p.tt.e?6:0);}
   if(g.x){if(g.chTaken<g.chRubies){const f=Math.min(1,p.coffee/chCost(g));v+=Math.min(p.coffee,chCost(g))*2+22*f*f;}else v+=p.coffee;}
@@ -714,16 +722,16 @@ async function humanDecide(ctx,p,kind,d){
   case 'sell':return sellSheet(p,d);
   case 'cardSource':return sheet(PNAME[6],`<p>Take ${W.card} ${d.n} of 2.</p>`,[{label:'Draw from the pile',value:'deck',primary:true},{label:`Take “${CARD_DEFS[d.top].name}” from the discards`,value:'discard'}]);
   case 'discardCard':return sheet(d.title||'Discard a card',`<p>Choose a ${W.card} to discard.</p>`,p.cards.map((c,i)=>({label:`${CARD_DEFS[c].name} <small>${CARD_DEFS[c].text}</small>`,value:i})));
-  case 'mosqueColor':return sheet(`Claim a ${W.tile}`,'<p>Pay 1 of the shown goods to take the tile.</p>',[...d.options.map(c=>({label:`${chip(c)} ${GNAME[c]} tile <small>${d.cheap?'':`needs ${G.mosque[c][0]} · `}${TILE_ABIL[c]}</small>`,value:c})),...(d.cheap?[]:[{label:'Skip',value:null}])]);
+  case 'lodgeColor':return sheet(`Claim a ${W.tile}`,'<p>Pay 1 of the shown goods to take the tile.</p>',[...d.options.map(c=>({label:`${chip(c)} ${GNAME[c]} tile <small>${d.cheap?'':`needs ${G.lodge[c][0]} · `}${TILE_ABIL[c]}</small>`,value:c})),...(d.cheap?[]:[{label:'Skip',value:null}])]);
   case 'discardGuild':return sheet(d.title||`Discard a ${W.guildCard}`,`<p>Choose a ${W.guildCard} to discard.</p>`,p.guild.map((c,i)=>({label:`${guildName(c)} <small>${guildText(c)}</small>`,value:i})));
   case 'discardKind':return sheet(d.title,`<p>Give up a ${W.card} or a ${W.guildCard}?</p>`,[{label:`A ${W.card}`,value:'bonus',primary:true},{label:`A ${W.guildCard}`,value:'guild'}]);
   case 'payGoods':return payGoodsSheet(p,d);
   case 'snug':{const oi=k=>ICON(k)?`<img class="gi" src="${ICON(k)}" alt="" style="width:1.6em;height:1.6em;margin-right:4px">`:'';
-    const lab={barrier:`${oi('barricade')}Put up the ${W.barrier} and take a nearby action`,tm:`${oi('gutter-map')}Buy the ${W.moveTile}`,te:`${oi('friends')}Buy the ${W.encTile}`,bak:`Pay ${BAK_SIDES[G.bak].map(chip).join('')} for a ${W.ruby}`};
-    const sub={barrier:'Only you may cross it',tm:TT_TEXT('m'),te:TT_TEXT('e'),bak:'From the '+bakRubyPlaces(G).map(x=>SHORT[x]).join(', ')};
+    const lab={barrier:`${oi('barricade')}Put up the ${W.barrier} and take a nearby action`,tm:`${oi('gutter-map')}Buy the ${W.moveTile}`,te:`${oi('friends')}Buy the ${W.encTile}`,bribe:`Pay ${BRIBE_SIDES[G.bribe].map(chip).join('')} for a ${W.ruby}`};
+    const sub={barrier:'Only you may cross it',tm:TT_TEXT('m'),te:TT_TEXT('e'),bribe:'From the '+bribeRubyPlaces(G).map(x=>SHORT[x]).join(', ')};
     return sheet(PNAME[19],`<p>${d.times>1?`Action ${d.n+1} of up to ${d.times}. `:''}You have ${TEA(p.coffee)}.</p>`,[...d.opts.map(o=>({label:`<b>${lab[o.k]}</b> <span class="cost">${teaIc()}${o.pay}</span><small>${sub[o.k]}</small>`,value:o.k,cls:'opt'})),{label:d.n?'Done':'Skip',value:null}]);}
   case 'barrierSide':return sheet(`Place the ${W.barrier}`,`<p>Which edge of the ${PNAME[d.a]} does the ${W.barrier} go on? Others can't cross between those two places.</p>`,d.options.map(x=>({label:`Between it and the ${PNAME[x]}`,value:x})));
-  case 'bakRuby':return sheet(`Take a ${W.ruby}`,`<p>Take the next ${W.ruby} from:</p>`,d.options.map(x=>({label:PNAME[x],value:x})));
+  case 'bribeRuby':return sheet(`Take a ${W.ruby}`,`<p>Take the next ${W.ruby} from:</p>`,d.options.map(x=>({label:PNAME[x],value:x})));
   case 'policeTarget':return sheet(d.title||PNAME[12],`<p>${d.text||`Send your ${W.family} to any place and take that action there. No ${W.assistant} needed and no encounters.`}</p>`,[...d.options.map(pl=>({label:PNAME[pl],value:pl})),{label:'Skip',value:null}],{grid:true});
   case 'familyReward':return sheet(`${W.family[0].toUpperCase()+W.family.slice(1)} caught`,`<p>You sent ${d.name}'s ${W.family} to the ${PNAME[12]}. Choose your reward.</p>`,[{label:`Take ${L(3)}`,value:'lira',primary:true},{label:`Draw a ${W.card}`,value:'card'}]);
   case 'govPay':return sheet(`Pay ${NS('gov')}`,`<p>Pay ${L(2)} or discard a ${W.card}.</p>`,[...(p.lira>=2?[{label:`Pay ${L(2)}`,value:'lira',primary:true}]:[]),...p.cards.map((c,i)=>({label:'Discard “'+CARD_DEFS[c].name+'”',value:i}))]);
@@ -753,7 +761,7 @@ async function cardTap(pi,i){
   if(t==='family'){playable=canAct&&p.family!==12;if(p.family===12)hint=`Your ${W.family} is already at the ${PNAME[12]}.`;}
   if(t==='stay'||t==='move34'){playable=moving;label=UI.mode===t?'Cancel':'Use for this move';if(!moving)hint='Only before you move.';}
   if(t==='recall'){playable=moving&&Object.keys(p.assist).length>0;if(!moving)hint='Only before you move.';else if(!playable)hint=`All your ${W.assistants} are already with you.`;}
-  if(['dSultan','dPost','dGem','smAny','six','dWain','dCH'].includes(t))hint=t==='six'?'You will be offered this card when you roll the dice.':'You will be offered this card during that action.';
+  if(['dEnvoy','dPost','dGem','smAny','six','dWain','dCH'].includes(t))hint=t==='six'?'You will be offered this card when you roll the dice.':'You will be offered this card during that action.';
   if(t==='tea2'||t==='diceGift')playable=canAct;
   if(t==='gcard'){playable=canAct&&p.coffee>=2;if(canAct&&p.coffee<2)hint=`You need ${TEA(2)}.`;}
   if(t==='tea8'){playable=canAct&&p.coffee>0;if(canAct&&!p.coffee)hint=`You need ${TEA(1)}.`;}
@@ -845,7 +853,7 @@ function startGame(cfg){leaveOnline();showScreen('table');GEN++;pendingMove=pend
 function resumeGame(saved){leaveOnline();showScreen('table');GEN++;pendingMove=pendingEnd=null;G=upgradeState(saved);UI={phase:'idle',sel:null,mode:'normal',busy:false};$('#sheetWrap').hidden=true;render();if(G.over){UI.phase='over';render();}else gameLoop();}
 
 /* ---------- sound (synthesised, no files) ---------- */
-const SND={ctx:null,on:lsGet('istanbul-sound')!=='off'};
+const SND={ctx:null,on:lsGet('riverfair-sound')!=='off'};
 function actx(){if(!SND.ctx){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;try{SND.ctx=new A();}catch(e){return null;}}if(SND.ctx.state==='suspended')SND.ctx.resume();return SND.ctx;}
 addEventListener('pointerdown',()=>{if(SND.on)actx();});
 function tone(f,t0,dur,type,vol,f2){const c=SND.ctx;const t=c.currentTime+t0;const o=c.createOscillator(),g=c.createGain();o.type=type||'sine';o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+dur);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g).connect(c.destination);o.start(t);o.stop(t+dur+.02);}
@@ -861,7 +869,7 @@ const SFX={
   bad(){tone(196,0,.22,'triangle',.12,147);}
 };
 function sfx(n){if(!SND.on||!SND.ctx)return;try{if(SND.ctx.state==='suspended')SND.ctx.resume();SFX[n]();}catch(e){}}
-function setSound(on){SND.on=on;lsSet('istanbul-sound',on?'on':'off');if(on){actx();sfx('coin');}renderSoundBtn();}
+function setSound(on){SND.on=on;lsSet('riverfair-sound',on?'on':'off');if(on){actx();sfx('coin');}renderSoundBtn();}
 function renderSoundBtn(){const b=$('#soundBtn');b.setAttribute('aria-pressed',String(SND.on));b.title=SND.on?'Sound is on':'Sound is off';b.innerHTML=`<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>${SND.on?'<path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>':'<path d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'}</svg><span class="sr">${SND.on?'Sound on':'Sound off'}</span>`;}
 
 /* ---------- board-game effects: sliding tokens, gain pop-ups, dice, ruby flourish ---------- */
@@ -1011,15 +1019,15 @@ function hintFor(p,pl,mode){
   case 9:return H('Gamble','good');
   case 10:case 11:{const mk=pl===10?g.large:g.small;const t=tileCount(mk[0]);let n=Math.min(5,GOODS.reduce((s,c)=>s+Math.min(t[c],p.goods[c]),0));if(pl===11&&hasCard(p,'smAny'))n=Math.max(n,Math.min(5,totalGoods(p)));return n?H(`Sell ${n}: ${REV[pl][n]}${CS()}`,'good'):H('Nothing to sell','meh');}
   case 12:return p.family===12?H('Free action','good'):H(`${W.family} away`,'meh');
-  case 13:{if(g.sultanTaken>=g.sultanRubies)return H('Sold out','meh');const m=sultanMissing(p,sultanReq(g));return m?H(`Need ${m} more`,'meh'):H(`◆ Deliver`,'ruby');}
-  case 14:case 15:{const cols=MOSQUE[pl];const ok=cols.filter(c=>!p.tiles[c]&&g.mosque[c].length&&p.goods[c]>=g.mosque[c][0]);
-    if(ok.length){const done=cols.every(c=>p.tiles[c]||ok.includes(c))&&cols.filter(c=>!p.tiles[c]).length===1;return H(done?'◆ Tile':'Claim tile',done&&g.mosqueRubies[pl]>0?'ruby':'good');}
-    const left=cols.filter(c=>!p.tiles[c]&&g.mosque[c].length);if(!left.length)return H('Done','meh');
-    const c=left.sort((a,b)=>(g.mosque[a][0]-p.goods[a])-(g.mosque[b][0]-p.goods[b]))[0];return H(`Need ${g.mosque[c][0]} ${chip(c)}`,'meh');}
+  case 13:{if(g.envoyTaken>=g.envoyRubies)return H('Sold out','meh');const m=envoyMissing(p,envoyReq(g));return m?H(`Need ${m} more`,'meh'):H(`◆ Deliver`,'ruby');}
+  case 14:case 15:{const cols=LODGE[pl];const ok=cols.filter(c=>!p.tiles[c]&&g.lodge[c].length&&p.goods[c]>=g.lodge[c][0]);
+    if(ok.length){const done=cols.every(c=>p.tiles[c]||ok.includes(c))&&cols.filter(c=>!p.tiles[c]).length===1;return H(done?'◆ Tile':'Claim tile',done&&g.lodgeRubies[pl]>0?'ruby':'good');}
+    const left=cols.filter(c=>!p.tiles[c]&&g.lodge[c].length);if(!left.length)return H('Done','meh');
+    const c=left.sort((a,b)=>(g.lodge[a][0]-p.goods[a])-(g.lodge[b][0]-p.goods[b]))[0];return H(`Need ${g.lodge[c][0]} ${chip(c)}`,'meh');}
   case 16:{if(g.gemTaken>=g.gemRubies)return H('Sold out','meh');const pr=gemPrice(g);return p.lira>=pr?H(`◆ ${pr}${CS()}`,'ruby'):H(`Need ${pr-p.lira}${CS()} more`,'meh');}
   case 17:{const n=(p.lira>=2?1:0)+(totalGoods(p)?1:0)+(p.cards.length?1:0);return n?H(`up to +${2*n}${teaIc()}`,'good'):H('Nothing to pay','meh');}
   case 18:return H(`+1${teaIc()} +guild`,'good');
-  case 19:{const o=snugOptions(g,p).filter(x=>p.coffee>=x.cost);if(o.some(x=>x.k==='bak'))return H(`◆ Bribe`,'ruby');if(o.some(x=>x.k==='tm'||x.k==='te'))return H(W.ttile,'good');if(o.length)return H(W.barrier[0].toUpperCase()+W.barrier.slice(1),'good');return H(`Need ${W.coffee}`,'meh');}
+  case 19:{const o=snugOptions(g,p).filter(x=>p.coffee>=x.cost);if(o.some(x=>x.k==='bribe'))return H(`◆ Bribe`,'ruby');if(o.some(x=>x.k==='tm'||x.k==='te'))return H(W.ttile,'good');if(o.length)return H(W.barrier[0].toUpperCase()+W.barrier.slice(1),'good');return H(`Need ${W.coffee}`,'meh');}
   case 20:{if(g.chTaken>=g.chRubies)return H('Sold out','meh');const c=chCost(g);return p.coffee>=c?H(`◆ ${c}${teaIc()}`,'ruby'):H(`Need ${c-p.coffee}${teaIc()} more`,'meh');}
   }
   return H('');
@@ -1049,7 +1057,7 @@ function rulesSheet(){
     <h4>${W.cards[0].toUpperCase()+W.cards.slice(1)}</h4>
     <div class="rplaces">${Object.entries(CARD_DEFS).filter(([k])=>X||!EXP_CARDS[k]).map(([,d])=>`<div><b>${d.name} ×${d.n}</b><span>${d.text}</span></div>`).join('')}</div>
     ${X?`<h4>${W.guildCards[0].toUpperCase()+W.guildCards.slice(1)}</h4><p>Play one on your turn instead of moving. It replaces your whole turn: no encounters, and no ${W.cards} tied to a place.</p><div class="rplaces">${[...Array(20)].map((_,i)=>`<div><b>${i+1}. ${guildName(i+1)}</b><span>${guildText(i+1)}</span></div>`).join('')}</div>
-    <h4>${PNAME[19]}</h4><div class="rplaces"><div><b>${W.moveTile}</b><span>${TT_TEXT('m')}</span></div><div><b>${W.encTile}</b><span>${TT_TEXT('e')}</span></div><div><b>${W.bak[0].toUpperCase()+W.bak.slice(1)}</b><span>Its two sides ask for ${BAK_SIDES[0].map(chip).join('')} and ${BAK_SIDES[1].map(chip).join('')}; it flips after each use.</span></div></div>`:''}
+    <h4>${PNAME[19]}</h4><div class="rplaces"><div><b>${W.moveTile}</b><span>${TT_TEXT('m')}</span></div><div><b>${W.encTile}</b><span>${TT_TEXT('e')}</span></div><div><b>${W.bribe[0].toUpperCase()+W.bribe.slice(1)}</b><span>Its two sides ask for ${BRIBE_SIDES[0].map(chip).join('')} and ${BRIBE_SIDES[1].map(chip).join('')}; it flips after each use.</span></div></div>`:''}
     <h4>Tips</h4>
     <p>Reachable places show a hint of what you'd get. ◆ marks a ${W.ruby} you can take right now. <b>Suggest</b> asks the AI for its pick, and <b>Undo</b> takes back a move as long as no dice were rolled and no cards were drawn.</p>
   </div>`,[{label:'Close',value:null,primary:true}],{wide:true});
@@ -1068,12 +1076,12 @@ function tileStatus(pl){
   case 10:return G.large[0].map(chip).join('');
   case 11:return G.small[0].map(chip).join('');
   case 12:return 'free action';
-  case 13:{const left=G.sultanRubies-G.sultanTaken;return left?`<span class="ruby">◆${left}</span> ${sultanReq(G).length} goods`:'sold out';}
-  case 14:case 15:return MOSQUE[pl].map(c=>`${chip(c)}${G.mosque[c].length?G.mosque[c][0]:'–'}`).join(' ')+` <span class="ruby">◆${G.mosqueRubies[pl]}</span>`;
+  case 13:{const left=G.envoyRubies-G.envoyTaken;return left?`<span class="ruby">◆${left}</span> ${envoyReq(G).length} goods`:'sold out';}
+  case 14:case 15:return LODGE[pl].map(c=>`${chip(c)}${G.lodge[c].length?G.lodge[c][0]:'–'}`).join(' ')+` <span class="ruby">◆${G.lodgeRubies[pl]}</span>`;
   case 16:{const left=G.gemRubies-G.gemTaken;return left?`<span class="ruby">◆${left}</span> ${gemPrice(G)}${CS()}`:'sold out';}
   case 17:return `→ 2${teaIc()} ×3`;
   case 18:return `+1${teaIc()} +2 ${W.guildCards}`;
-  case 19:return `<span class="ruby">◆</span> ${BAK_SIDES[G.bak].map(chip).join('')}+4${teaIc()}`;
+  case 19:return `<span class="ruby">◆</span> ${BRIBE_SIDES[G.bribe].map(chip).join('')}+4${teaIc()}`;
   case 20:{const left=G.chRubies-G.chTaken;return left?`<span class="ruby">◆${left}</span> ${chCost(G)}${teaIc()}`:'sold out';}
   }
 }
@@ -1103,11 +1111,11 @@ function placeDetail(pl){
   case 5:return `<div class="detail"><span><span class="k">Showing now</span><span class="chips">${postItems(G).map(it=>it.g?chip(it.g)+' '+GNAME[it.g]:L(it.l)).join(' · ')}</span></span></div>`;
   case 10:case 11:{const mk=pl===10?G.large:G.small;return `<div class="detail"><span><span class="k">${W.orders||"Demand tile"}</span><span class="chips">${mk[0].map(chip).join('')}</span></span><span><span class="k">Next</span><span class="chips">${mk[1].map(chip).join('')}</span></span></div>`;}
   case 12:{const f=G.players.filter(q=>q.family===12).map(q=>esc(q.name));return `<div class="detail"><span><span class="k">${W.family}s here</span>${f.length?f.join(', '):'none'}</span></div>`;}
-  case 13:{const left=G.sultanRubies-G.sultanTaken;return `<div class="detail"><span><span class="k">Next delivery</span>${left?`<span class="chips">${sultanReq(G).map(chip).join('')}</span>`:'—'}</span><span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${left}</span></span></div>`;}
-  case 14:case 15:return `<div class="detail">${MOSQUE[pl].map(c=>`<span><span class="k">${GNAME[c]} tile</span>${G.mosque[c].length?`needs ${G.mosque[c][0]} ${chip(c)}`:'gone'} <small class="muted">${TILE_ABIL[c]}</small></span>`).join('')}<span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${G.mosqueRubies[pl]}</span></span></div>`;
+  case 13:{const left=G.envoyRubies-G.envoyTaken;return `<div class="detail"><span><span class="k">Next delivery</span>${left?`<span class="chips">${envoyReq(G).map(chip).join('')}</span>`:'—'}</span><span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${left}</span></span></div>`;}
+  case 14:case 15:return `<div class="detail">${LODGE[pl].map(c=>`<span><span class="k">${GNAME[c]} tile</span>${G.lodge[c].length?`needs ${G.lodge[c][0]} ${chip(c)}`:'gone'} <small class="muted">${TILE_ABIL[c]}</small></span>`).join('')}<span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${G.lodgeRubies[pl]}</span></span></div>`;
   case 16:{const left=G.gemRubies-G.gemTaken;return `<div class="detail"><span><span class="k">Price</span>${left?L(gemPrice(G)):'—'}</span><span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${left}</span></span></div>`;}
   case 18:return `<div class="detail"><span><span class="k">Your ${W.guildCards}</span>${(p.guild||[]).length}</span><span><span class="k">Play one</span>instead of a whole turn</span></div>`;
-  case 19:return `<div class="detail"><span><span class="k">${W.barrier[0].toUpperCase()+W.barrier.slice(1)} · ${TEA(2)}</span>${G.barrier?`${SHORT[G.barrier[0]]} | ${SHORT[G.barrier[1]]}`:'not placed'}</span><span><span class="k">${W.moveTile}</span>${G.tt.m.length?TEA(G.tt.m[0]):'gone'}</span><span><span class="k">${W.encTile}</span>${G.tt.e.length?TEA(G.tt.e[0]):'gone'}</span><span><span class="k">${W.bak[0].toUpperCase()+W.bak.slice(1)}</span><span class="chips">${BAK_SIDES[G.bak].map(chip).join('')}</span> + ${TEA(4)}</span></div>`;
+  case 19:return `<div class="detail"><span><span class="k">${W.barrier[0].toUpperCase()+W.barrier.slice(1)} · ${TEA(2)}</span>${G.barrier?`${SHORT[G.barrier[0]]} | ${SHORT[G.barrier[1]]}`:'not placed'}</span><span><span class="k">${W.moveTile}</span>${G.tt.m.length?TEA(G.tt.m[0]):'gone'}</span><span><span class="k">${W.encTile}</span>${G.tt.e.length?TEA(G.tt.e[0]):'gone'}</span><span><span class="k">${W.bribe[0].toUpperCase()+W.bribe.slice(1)}</span><span class="chips">${BRIBE_SIDES[G.bribe].map(chip).join('')}</span> + ${TEA(4)}</span></div>`;
   case 20:{const left=G.chRubies-G.chTaken;return `<div class="detail"><span><span class="k">Price</span>${left?TEA(chCost(G)):'—'}</span><span><span class="k">${W.rubies} left</span><span class="ruby">◆ ${left}</span></span><span><span class="k">Your ${W.coffee}</span>${p.coffee}</span></div>`;}
   }
   return '';
@@ -1375,7 +1383,7 @@ function flyItems(i,was,now){
   const go=(fromEl,toEl,icon,size,delay,land)=>{if(!fromEl||!toEl||!inView(toEl)&&!inView(fromEl))return;const[a,b]=ctr(fromEl),[c,d]=ctr(toEl);
     flyPath(a,b,c,d,1,`<img class="gi" src="${ICON(icon)}" alt="" style="width:${size}px;height:${size}px">`,delay,()=>{land&&land();toEl.animate([{transform:'scale(1)'},{transform:'scale(1.35)'},{transform:'scale(1)'}],{duration:320});});};
   let k=0;
-  GOODS.forEach(c=>{if(now.badges&&was.badges&&now.badges[c]>was.badges[c]&&ICON('badge-'+c)){const to=card.querySelector(`[data-b="${c}"]`);go(tile(MOSQUE[14].includes(c)?14:15),to,'badge-'+c,40,150*k++);}});
+  GOODS.forEach(c=>{if(now.badges&&was.badges&&now.badges[c]>was.badges[c]&&ICON('badge-'+c)){const to=card.querySelector(`[data-b="${c}"]`);go(tile(LODGE[14].includes(c)?14:15),to,'badge-'+c,40,150*k++);}});
   ['m','e'].forEach(t=>{if(now.tt&&(now.tt[t]||0)>(was.tt&&was.tt[t]||0)){const to=card.querySelector(`[data-tt="${t}"]`);go(tile(19),to,t==='m'?'gutter-map':'friends',40,150*k++);}});
   if(ICON('card')&&now.cards!==was.cards){
     const tok=document.querySelector(`#board [data-k="m${i}"]`)||tile(G.players[i].pos);
@@ -1417,7 +1425,7 @@ function cardArt(k){
   switch(k){
   case 'good':return `${I('any','big')}${NUM('+1')}`;
   case 'lira5':return `${I('coin','big')}${NUM('+5')}`;
-  case 'dSultan':return `${PT(13)}${NUM('2×')}`;
+  case 'dEnvoy':return `${PT(13)}${NUM('2×')}`;
   case 'dPost':return `${PT(5)}${NUM('2×')}`;
   case 'dGem':return `${PT(16)}${NUM('2×')}`;
   case 'dWain':return `${PT(1)}${NUM('2×')}`;
@@ -1492,8 +1500,8 @@ function showEnd(){
   sheet(`${esc(G.players[G.result[0]].name)} wins`,`<table class="rank"><tr><th>#</th><th>${W.merchant[0].toUpperCase()+W.merchant.slice(1)}</th><th>${W.rubies}</th><th>${W.cur}</th><th>Goods</th></tr>${rows}</table><p class="muted">Ties go to most ${W.cur}, then goods, then ${W.cards}.</p>`,[{label:'Back to the menu',value:'new',primary:true},{label:'Look at the board',value:null}]).then(v=>{if(v==='new')goHome();});
 }
 function setupSheet(){
-  const prev=(G&&G.cfg&&!ON.code)?G.cfg:{players:[{name:lsGet('istanbul-name')||'Player 1',ai:false},{name:AI_NAMES[1],ai:true},{name:AI_NAMES[2],ai:true}],layout:'short'};
-  const names=[lsGet('istanbul-name')||'Player 1',...AI_NAMES.slice(1)];
+  const prev=(G&&G.cfg&&!ON.code)?G.cfg:{players:[{name:lsGet('riverfair-name')||'Player 1',ai:false},{name:AI_NAMES[1],ai:true},{name:AI_NAMES[2],ai:true}],layout:'short'};
+  const names=[lsGet('riverfair-name')||'Player 1',...AI_NAMES.slice(1)];
   const st={n:prev.players.length,players:names.map((n,i)=>prev.players[i]?{name:prev.players[i].name,ai:prev.players[i].ai}:{name:n,ai:true}),layout:prev.layout,exp:!!prev.exp};
   const w=$('#sheetWrap'),s=$('#sheet');s.className='';
   const draw=()=>{
@@ -1518,7 +1526,7 @@ const expToggle=on=>`<div><h4>Expansion</h4><div class="seg">${[['0','Base game'
 /* ---------- shared helpers for screens ---------- */
 function rid(n){const a='abcdefghijkmnpqrstuvwxyz23456789';let s='';for(let i=0;i<n;i++)s+=a[Math.floor(Math.random()*a.length)];return s;}
 function rcode(){const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<5;i++)s+=a[Math.floor(Math.random()*a.length)];return s;}
-const shareLink=code=>location.origin+location.pathname+'?game='+code+(T.id!=='istanbul'?'&theme='+T.id:'');
+const shareLink=code=>location.origin+location.pathname+'?game='+code;
 async function copyText(t){try{await navigator.clipboard.writeText(t);toast('Link copied');}catch(e){toast(t);}}
 function showScreen(name){['home','lobby','table'].forEach(n=>$('#'+n).hidden=n!==name);if(name!=='table'){$('#myStrip').hidden=true;$('#moveBar').hidden=true;fitDock();}if(name!=='table'){$('#roundInfo').textContent='';document.title=T.name;}$('#codeChip').hidden=!ON.code;if(ON.code)$('#codeChip').textContent='Game '+ON.code;}
 
@@ -1533,7 +1541,7 @@ const FIREBASE_CONFIG={
   appId:"1:603257531019:web:7a3c7b4da29694c344428e"};
 const FB_VER='10.12.2';
 const MOCK=new URLSearchParams(location.search).has('mock');
-const ME=(()=>{const k='istanbul-me';try{const st=MOCK?sessionStorage:localStorage;let id=st.getItem(k);if(!id){id=rid(12);st.setItem(k,id);}return id;}catch(e){return rid(12);}})();
+const ME=(()=>{const k='riverfair-me';try{const st=MOCK?sessionStorage:localStorage;let id=st.getItem(k);if(!id){id=rid(12);st.setItem(k,id);}return id;}catch(e){return rid(12);}})();
 const ON={code:null,net:null,data:null,version:0,driving:false,drive:0,liveT:null,lastLive:null,unsub:null,presenceOn:false,shownEnd:false,timer:null};
 let netP=null;
 function getNet(){if(!netP)netP=(MOCK?Promise.resolve(mockNet()):firebaseNet()).catch(e=>{netP=null;throw e;});return netP;}
@@ -1548,7 +1556,7 @@ async function firebaseNet(){
     leave:p=>db.set(R(p),null)};
 }
 function mockNet(){ // same-browser stand-in used for testing: add ?mock to the URL
-  const KEY='istanbul-mockdb',subs=[];
+  const KEY='riverfair-mockdb',subs=[];
   const cl=v=>v===undefined?null:JSON.parse(JSON.stringify(v));
   const load=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}');}catch(e){return{};}};
   const at=(t,p)=>p.split('/').filter(Boolean).reduce((o,k)=>o==null?undefined:o[k],t);
@@ -1634,7 +1642,7 @@ async function rejoinSeat(i){
 function renderLobby(){
   const d=ON.data,seats=d.seats||[];const mine=seats.findIndex(s=>s.owner===ME);const here=d.presence||{};
   const open=seats.filter(s=>s.owner==='-').length;const link=shareLink(ON.code);
-  const keepName=$('#joinName')?$('#joinName').value:(lsGet('istanbul-name')||'');
+  const keepName=$('#joinName')?$('#joinName').value:(lsGet('riverfair-name')||'');
   $('#lobby').innerHTML=`<div class="card panel">
     <p class="eyebrow">Game ${ON.code}</p>
     <h2>Gather the ${W.merchants}</h2>
@@ -1660,7 +1668,7 @@ function renderLobby(){
 async function takeSeat(i){
   const name=cleanName($('#joinName')&&$('#joinName').value);
   if(!name){toast('Type your name first.');$('#joinName')&&$('#joinName').focus();return;}
-  lsSet('istanbul-name',name);
+  lsSet('riverfair-name',name);
   const ok=await ON.net.tx(`games/${ON.code}/seats/${i}`,s=>{if(!s||s.owner!=='-')return;return{name,ai:false,owner:ME};});
   if(!ok)toast('Someone just took that seat.');
 }
@@ -1694,7 +1702,7 @@ const HOME={n:2,seats:['friend','friend','ai','ai','ai'],layout:'short',exp:fals
 function goHome(){leaveOnline();GEN++;pendingMove=pendingEnd=null;$('#sheetWrap').hidden=true;showScreen('home');renderHome();}
 function renderHome(){
   let saved=null;try{saved=JSON.parse(lsGet(STORE)||'null');}catch(e){}
-  const name=$('#homeName')?$('#homeName').value:(lsGet('istanbul-name')||'');
+  const name=$('#homeName')?$('#homeName').value:(lsGet('riverfair-name')||'');
   $('#home').innerHTML=`
   <div class="hero"><p class="eyebrow">${T.eyebrow}</p>
     <h2 class="display">${T.headline}</h2>
@@ -1726,7 +1734,7 @@ function renderHome(){
   document.querySelectorAll('#home [data-exp]').forEach(b=>b.onclick=()=>{HOME.exp=b.dataset.exp==='1';renderHome();});
   $('#createBtn').onclick=()=>{
     const nm=cleanName($('#homeName').value);if(!nm){toast('Type your name first.');$('#homeName').focus();return;}
-    lsSet('istanbul-name',nm);
+    lsSet('riverfair-name',nm);
     const seats=[...Array(HOME.n)].map((_,i)=>i===0?{name:nm,ai:false,owner:ME}:HOME.seats[i]==='ai'?{name:AI_NAMES[i],ai:true,owner:'ai'}:{name:'Friend',ai:false,owner:'-'});
     createOnline({seats,layout:HOME.layout,exp:HOME.exp});
   };

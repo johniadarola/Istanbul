@@ -1,12 +1,11 @@
-/* Theme draft: an animal market town under the shadow of the Avian Ascendancy.
-   Every name here is a placeholder to rename freely. Load it with ?theme=riverfair */
+/* Riverfair: every name, description and art path players see. */
 window.THEME = {
   id: 'riverfair',
   name: 'Riverfair',
   eyebrow: 'A market race beneath the Avian Ascendancy',
   headline: 'Five Gold Feathers, one market town',
   lede: "The Ascendancy's envoy has come down to Riverfair, and the town's traders want her favour. Push your handcart from stall to stall with four apprentices in tow, buy low, sell high, and earn Gold Feathers. The first trader to hold five (six with two players) ends the game.",
-  foot: 'A fan retheme of the rules of Istanbul by Rüdiger Dorn, for personal play.',
+  foot: 'Riverfair · a market race beneath the Avian Ascendancy.',
 
   words: {
     cur: 'Coppers', curShort: 'c',
@@ -27,7 +26,7 @@ window.THEME = {
     coffee: 'mushrooms', coffee1: 'mushroom', coffeeLong: 'mushrooms',
     trader: 'Forager', traderName: 'Sorrel', traderTitle: 'Sorrel, Squirrel Forager',
     guildCard: 'guild card', guildCards: 'guild cards',
-    barrier: 'barricade', ttile: 'Snug favour', ttiles: 'Snug favours', moveTile: 'Gutter map', encTile: 'Friends in low places', bak: 'bribe slate',
+    barrier: 'barricade', ttile: 'Snug favour', ttiles: 'Snug favours', moveTile: 'Gutter map', encTile: 'Friends in low places', bribe: 'bribe slate',
     orders: 'Orders'
   },
 
@@ -76,7 +75,7 @@ window.THEME = {
   cards: {
     good:    { name: 'Spare crate',     text: 'Gain 1 good of your choice (not during an action).' },
     lira5:   { name: 'Purse of coppers', text: 'Take 5 Coppers.' },
-    dSultan: { name: "Shavala's ear", text: "At the Envoy's Aerie, deliver a second time. Offered during that action." },
+    dEnvoy: { name: "Shavala's ear", text: "At the Envoy's Aerie, deliver a second time. Offered during that action." },
     dPost:   { name: 'Second post',     text: 'At the Pigeon Roost, take the action a second time. Offered during that action.' },
     dGem:    { name: "Glimmer's mood",  text: "At Madame Glimmer's Hoard, buy a second Gold Feather. Offered during that action." },
     family:  { name: 'Bail out cousin', text: 'Send your cousin back to the Watch House and take a reward: 3 Coppers or a favour card.' },
