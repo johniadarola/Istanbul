@@ -863,7 +863,7 @@ function renderSoundBtn(){const b=$('#soundBtn');b.setAttribute('aria-pressed',S
 /* ---------- board-game effects: sliding tokens, gain pop-ups, dice, ruby flourish ---------- */
 const FX={prev:null,quiet:false,rollSeen:null};
 const FACE={}; // standees face the way they last walked
-function fxSnap(){return{id:G.id,cur:G.current,over:G.over,roll:G.lastRoll?G.lastRoll.n:0,players:G.players.map(p=>({pos:p.pos,lira:p.lira,coffee:p.coffee||0,goods:{...p.goods},rubies:p.rubies,cards:p.cards.length,ext:p.ext,tiles:GOODS.reduce((s,c)=>s+p.tiles[c],0)}))};}
+function fxSnap(){return{id:G.id,cur:G.current,over:G.over,roll:G.lastRoll?G.lastRoll.n:0,players:G.players.map(p=>({pos:p.pos,lira:p.lira,coffee:p.coffee||0,assist:{...p.assist},goods:{...p.goods},rubies:p.rubies,cards:p.cards.length,ext:p.ext,tiles:GOODS.reduce((s,c)=>s+p.tiles[c],0)}))};}
 function tokenRects(){const b=$('#board');if(!b)return{};const br=b.getBoundingClientRect();const o={};b.querySelectorAll('[data-k]').forEach(el=>{const r=el.getBoundingClientRect();o[el.dataset.k]={x:r.left-br.left,y:r.top-br.top};});return o;}
 function runFx(before){
   const prev=FX.prev,now=fxSnap();FX.prev=now;
@@ -881,6 +881,7 @@ function runFx(before){
         if(a&&z&&a!==z)gridPath(a,z).slice(1,-1).forEach(pl=>{const t=b.querySelector(`.tile[data-pl="${pl}"]`);if(t){const tr=t.getBoundingClientRect();pts.push({x:tr.left-br.left+tr.width/2-r.width/2,y:tr.top-br.top+tr.height-r.height-6});}});}
       pts.push(nowPt);
       walkToken(b,el,pts,!!m);}
+    else if(/^a\d+-\d+$/.test(k)&&!FX.quiet)el.style.opacity='0';
     else el.animate([{scale:0,opacity:0},{scale:1.25,opacity:1,offset:.6},{scale:1}],{duration:380,easing:'ease-out'});});
   const sounds=new Set();
   if(now.players.some((p,i)=>p.pos!==prev.players[i].pos))sounds.add('move');
@@ -901,11 +902,13 @@ function runFx(before){
       if(dl<0)flyGain(i,'lira',Math.ceil(-dl/3),CS(),true);
       GOODS.forEach(c=>{const d=q.goods[c]-p.goods[c];if(d>0)flyGain(i,c,d,chip(c),true);});
       if(p.coffee<q.coffee)flyGain(i,'coffee',q.coffee-p.coffee,teaIc(),true);
+      flyApprentices(i,q.assist||{},p.assist||{},before,br);
       if(bits.length){const el=document.querySelector(`.pl[data-pi="${i}"]`);if(el&&!REDUCED)el.animate([{background:'color-mix(in srgb, var(--turq) 22%, transparent)'},{background:'transparent'}],{duration:1200});}
       if(p.rubies>q.rubies){rubyFlourish(i,p.rubies);sounds.add('ruby');}
     });
   }
   FX.quiet=false;
+  b.querySelectorAll('[data-k^="a"]').forEach(el=>{if(el.style.opacity==='0'&&!el.dataset.fly)el.style.opacity='';});
   if(now.roll!==FX.rollSeen&&G.lastRoll){FX.rollSeen=now.roll;showDice(G.lastRoll);sounds.add('dice');}
   if(now.cur!==prev.cur&&!now.over&&isMine(G.players[now.cur]))sounds.add('turn');
   if(sounds.has('ruby'))sounds.delete('coin');
@@ -1196,7 +1199,7 @@ function render(){
     const port=T.art.merchants&&T.art.merchants[q.color];
     return `<div class="pl" data-pi="${q.i}"><div class="plh">${port?`<span class="portrait c-${q.color}" style="background-image:url('${port}')"></span>`:`<i class="mer c-${q.color}"></i>`}<span class="nm">${esc(q.name)}</span>${q.ai?'<span class="tag">AI</span>':''}${mine?'<span class="tag">You</span>':''}${away?'<span class="tag">Away</span>':''}${me?'<span class="tag turn">Turn</span>':''}
       <span class="rubies" aria-label="${q.rubies} ${W.rubies}">${[...Array(tgt)].map((_,i)=>`<span class="${i<q.rubies?'ruby':'off'}">◆</span>`).join('')}${q.rubies>tgt?`<span class="ruby">+${q.rubies-tgt}</span>`:''}</span></div>
-      <div class="stats"><span data-stat="lira"><b>${q.lira}</b> ${W.cur}</span>${G.x?`<span data-stat="coffee">${teaIc()} <b>${q.coffee}</b> ${W.coffee}</span>`:''}<span><b>${q.stack}</b> ${plural(q.stack,W.assistant,W.assistants)} along${out?` <span class="muted">· out: ${out}</span>`:''}</span><span class="muted">${W.family[0].toUpperCase()+W.family.slice(1)}: ${SHORT[q.family]}</span>${q.tt&&q.tt.m?`<span class="tag tt" title="${TT_TEXT('m')}">${W.moveTile}</span>`:''}${q.tt&&q.tt.e?`<span class="tag tt" title="${TT_TEXT('e')}">${W.encTile}</span>`:''}${G.x&&G.barrierOwner===q.i?`<span class="tag tt">Holds the ${W.barrier}</span>`:''}
+      <div class="stats"><span data-stat="lira"><b>${q.lira}</b> ${W.cur}</span>${G.x?`<span data-stat="coffee">${teaIc()} <b>${q.coffee}</b> ${W.coffee}</span>`:''}<span data-stat="ap"><b>${q.stack}</b> ${plural(q.stack,W.assistant,W.assistants)} along${out?` <span class="muted">· out: ${out}</span>`:''}</span><span class="muted">${W.family[0].toUpperCase()+W.family.slice(1)}: ${SHORT[q.family]}</span>${q.tt&&q.tt.m?`<span class="tag tt" title="${TT_TEXT('m')}">${W.moveTile}</span>`:''}${q.tt&&q.tt.e?`<span class="tag tt" title="${TT_TEXT('e')}">${W.encTile}</span>`:''}${G.x&&G.barrierOwner===q.i?`<span class="tag tt">Holds the ${W.barrier}</span>`:''}
       <span class="tiles4" title="${W.tiles}">${GOODS.map(c=>`<span class="mt ${q.tiles[c]?'on g-'+c:''}" title="${GNAME[c]} tile"></span>`).join('')}</span></div>
       ${cartHTML(q)}
       ${showHand?`<div class="hand">${q.cards.length?q.cards.map((c,i)=>`<button class="cardchip ${UI.mode===c?'armed':''}" data-card="${q.i}:${i}">${CARD_DEFS[c].name}</button>`).join(''):`<span class="muted">No ${W.cards}</span>`}${(q.guild||[]).map((c,i)=>`<button class="cardchip guild" data-guild="${q.i}:${i}" title="${W.guildCard}">${guildName(c)}</button>`).join('')}</div>`:`<div class="stats muted">${q.cards.length} ${plural(q.cards.length,W.card,W.cards)}${G.x?` · ${(q.guild||[]).length} ${plural((q.guild||[]).length,W.guildCard,W.guildCards)}`:''}</div>`}
@@ -1270,9 +1273,10 @@ function flyTarget(i,what,out){
   const inView=el=>{if(!el)return false;const r=el.getBoundingClientRect();return r.width>0&&r.bottom>0&&r.top<innerHeight;};
   let el=null;
   if(sp&&sp.i===i&&!strip.hidden&&getComputedStyle(strip).display!=='none'){
-    el=what==='lira'?strip.querySelector('.ms-coin'):what==='coffee'?strip.querySelector('.ms-tea'):strip.querySelector(`.ms-g[data-g="${what}"]`);
+    el=what==='ap'?strip.querySelector('.ms-ap'):what==='lira'?strip.querySelector('.ms-coin'):what==='coffee'?strip.querySelector('.ms-tea'):strip.querySelector(`.ms-g[data-g="${what}"]`);
     if(inView(el))return el;}
   const card=document.querySelector(`.pl[data-pi="${i}"]`);if(!card)return null;
+  if(what==='ap'){el=card.querySelector('[data-stat="ap"] b');return inView(el)?el:null;}
   el=what==='lira'?card.querySelector('[data-stat="lira"]'):what==='coffee'?card.querySelector('[data-stat="coffee"]'):card.querySelector(`.crow[data-g="${what}"] .slot.full:last-of-type`)||card.querySelector(`.crow[data-g="${what}"]`);
   if(what!=='lira'&&what!=='coffee'){const row=card.querySelector(`.crow[data-g="${what}"]`);
     if(out){const empty=row&&row.querySelector('.slot.empty');el=empty||row;}  // the slot the good just left
@@ -1299,6 +1303,44 @@ function flyGain(i,what,n,html,out){
       {transform:`translate(${ex}px,${ey}px) translate(-50%,-50%) scale(.6)`,opacity:.9}],
       {duration:1150,delay:120*k,easing:'cubic-bezier(.45,0,.4,1)',fill:'backwards'});
     anim.onfinish=()=>{el.remove();if(k===Math.min(n,4)-1)to.animate([{transform:'scale(1)'},{transform:'scale(1.35)'},{transform:'scale(1)'}],{duration:320,easing:'ease-out'});};
+  }
+}
+/* apprentices: gathered ones fly back to your board, placed ones fly out to the tile */
+function flyApprentices(i,was,now,before,br){
+  const q=G.players[i];const ic=ICON('apprentice');
+  const html=`<i class="ast icon c-${q.color}" style="width:24px;height:24px">${ic?`<img src="${ic}" alt="">`:''}</i>`;
+  const board=flyTarget(i,'ap');
+  const places=new Set([...Object.keys(was),...Object.keys(now)]);
+  let k=0;
+  places.forEach(pl=>{
+    const d=(now[pl]||0)-(was[pl]||0);if(!d)return;
+    const key=`a${i}-${pl}`;
+    if(d<0){ // picked up / called home: from where the token stood to the board
+      const r=before[key];if(!r||!board)return;
+      const sx=br.left+r.x+10,sy=br.top+r.y+10,z=board.getBoundingClientRect();
+      flyPath(sx,sy,z.left+z.width/2,z.top+z.height/2,-d,html,180*k++,()=>bump(board));
+    }else{ // left behind: from the board to the tile
+      const el=document.querySelector(`#board [data-k="${key}"]`);if(!el)return;
+      const show=()=>{el.style.opacity='';delete el.dataset.fly;el.animate([{scale:.4},{scale:1.3,offset:.6},{scale:1}],{duration:320,easing:'ease-out'});};
+      if(!board||REDUCED){show();return;}
+      el.dataset.fly='1';el.style.opacity='0';
+      const z=board.getBoundingClientRect(),t=el.getBoundingClientRect();
+      bump(board);flyPath(z.left+z.width/2,z.top+z.height/2,t.left+t.width/2,t.top+t.height/2,d,html,180*k++,show);
+    }
+  });
+}
+const bump=el=>el.animate([{transform:'scale(1)'},{transform:'scale(1.3)'},{transform:'scale(1)'}],{duration:300,easing:'ease-out'});
+function flyPath(sx,sy,ex,ey,n,html,delay,onLand){
+  if(REDUCED){onLand&&onLand();return;}
+  const m=Math.min(n,4),mx=(sx+ex)/2,my=Math.min(sy,ey)-60;
+  for(let k=0;k<m;k++){
+    const el=document.createElement('div');el.className='fly';el.innerHTML=html;document.body.appendChild(el);
+    el.animate([
+      {transform:`translate(${sx}px,${sy}px) translate(-50%,-50%) scale(.8)`,opacity:0},
+      {transform:`translate(${sx}px,${sy-22}px) translate(-50%,-50%) scale(1.15)`,opacity:1,offset:.2},
+      {transform:`translate(${mx}px,${my}px) translate(-50%,-50%) scale(1.05)`,opacity:1,offset:.6},
+      {transform:`translate(${ex}px,${ey}px) translate(-50%,-50%) scale(.85)`,opacity:1}],
+      {duration:1000,delay:delay+110*k,easing:'cubic-bezier(.45,0,.4,1)',fill:'backwards'}).onfinish=()=>{el.remove();if(k===m-1&&onLand)onLand();};
   }
 }
 /* spending: lifts off the player's board and drops onto the tile */
