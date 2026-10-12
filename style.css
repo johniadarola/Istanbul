@@ -573,3 +573,58 @@ body.t-riverfair{--g-b:#b9c6e3}
 .btn.install img{border-radius:6px}
 /* installed app: respect the phone's notch and gesture bar */
 @media (display-mode: standalone){body{padding-top:env(safe-area-inset-top)}#dock{padding-bottom:env(safe-area-inset-bottom)}}
+
+/* ---------- home: painted market title screen ---------- */
+body.on-home{background:#16301f}
+body.on-home .wrap{max-width:none;padding:0}
+body.on-home header.top{position:fixed;top:0;right:0;z-index:20;padding:14px 18px;padding-top:calc(14px + env(safe-area-inset-top,0px));background:none}
+body.on-home header.top .brand{display:none}
+body.on-home header.top .btn{background:rgba(20,32,22,.45);color:#fbf3df;border-color:rgba(251,243,223,.35);backdrop-filter:blur(4px)}
+body.on-home header.top #newBtn{display:none}
+body.on-home .foot{display:none}
+#home:not([hidden]){position:relative;min-height:100vh;min-height:100dvh;display:flex;color:#fbf3df;overflow:hidden}
+.hm-bg{position:absolute;inset:0;background:url('art/home/market.webp') 68% center/cover no-repeat}
+.hm-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(16,36,22,.94) 0%,rgba(16,36,22,.82) 26%,rgba(16,36,22,.25) 46%,rgba(16,36,22,0) 60%),linear-gradient(0deg,rgba(10,20,12,.35),rgba(10,20,12,0) 22%)}
+.hm-col{position:relative;z-index:1;width:min(460px,92vw);padding:40px 34px 28px;display:flex;flex-direction:column;gap:14px}
+.hm-brand{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:4px}
+.hm-crest{position:relative;width:150px;height:74px;margin-bottom:-6px}
+.hm-crest img{position:absolute;left:50%;bottom:0;width:30px;height:72px;object-fit:contain;transform-origin:50% 100%;transform:translateX(-50%) rotate(var(--r));filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}
+@media (prefers-reduced-motion:no-preference){.hm-crest img{animation:crestIn .7s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:calc(var(--k) * 70ms)}}
+@keyframes crestIn{from{transform:translateX(-50%) rotate(0deg) scale(.6);opacity:0}}
+.hm-title{font-family:var(--f-display);font-weight:800;font-size:clamp(54px,7vw,78px);line-height:1;margin:0;color:#fbf0d6;text-shadow:0 3px 10px rgba(0,0,0,.45);letter-spacing:-.01em}
+.hm-tag{margin:6px 0 0;font-size:12px;letter-spacing:.32em;text-transform:uppercase;color:#e9dcbc;text-align:center}
+.hm-head{font-family:var(--f-display);font-weight:700;font-size:clamp(26px,2.6vw,34px);line-height:1.1;margin:8px 0 0;color:#fbf0d6;text-wrap:balance}
+.hm-lede{margin:0;font-size:16px;line-height:1.4;color:#efe4c8;max-width:34ch}
+.hm-card{position:relative;margin-top:6px;padding:20px 22px 22px;border-radius:6px;color:#2d1d0e;
+  background:linear-gradient(180deg,#fbf3df,#f1e3c2);box-shadow:0 0 0 1px #c9a26a,0 0 0 5px #fbf3df,0 0 0 6px #b48a4c,0 14px 34px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px}
+.hm-card h3{font-family:var(--f-display);font-size:26px;margin:0 0 4px;color:#2d1d0e}
+.hm-go{display:flex;flex-direction:column;align-items:center;gap:3px;font-family:var(--f-display);font-size:20px;font-weight:700;padding:11px 14px}
+.hm-go small{font-family:var(--f-body);font-size:12px;font-weight:500;opacity:.85}
+.hm-card .btn.primary{background:linear-gradient(180deg,#2f5a3a,#1f4129);border-color:#173220;color:#fbf3df}
+.hm-card .btn:not(.primary){background:#fffaf0;border-color:#c9a26a;color:#2d1d0e}
+.hm-or{display:flex;align-items:center;gap:10px;color:#b48a4c;font-size:10px;margin:4px 0}
+.hm-or::before,.hm-or::after{content:"";flex:1;height:1px;background:#d6bd8c}
+.hm-lbl{font-family:var(--f-display);font-weight:700;font-size:16px}
+.hm-join{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.hm-join input{font:inherit;font-size:15px;padding:10px 12px;border-radius:6px;border:1px solid #c9a26a;background:#fffdf7;color:#2d1d0e;text-transform:uppercase;letter-spacing:.08em;min-width:0}
+.hm-join input::placeholder{text-transform:none;letter-spacing:0;color:#9b8a70}
+.hm-links{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:2px}
+.hm-link{font:inherit;font-size:14px;background:none;border:0;padding:4px 0;color:#fbf0d6;text-decoration:underline;text-underline-offset:3px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.hm-link img{border-radius:4px}
+.hm-foot{margin:auto 0 0;padding-top:10px;font-size:13px;color:#d9ccaa}
+/* phones: the painting as a banner, the menu below */
+@media (max-width:760px){
+  #home:not([hidden]){flex-direction:column;background:#16301f}
+  .hm-bg{position:relative;inset:auto;height:44vh;min-height:250px;background-image:url('art/home/market-phone.webp');background-position:center 70%}
+  .hm-bg::after{background:linear-gradient(0deg,#16301f 0%,rgba(22,48,31,.0) 45%)}
+  .hm-col{width:auto;padding:0 18px 28px;margin-top:-120px}
+  .hm-title{font-size:56px}
+  .hm-head{font-size:24px;text-align:center}
+  .hm-lede{text-align:center;margin:0 auto}
+}
+.hm-crest{width:170px;height:92px}
+.hm-crest img{width:auto;height:84px}
+.hm-tag{letter-spacing:.2em;font-size:11.5px;white-space:nowrap}
+@media (max-width:420px){.hm-tag{letter-spacing:.12em;font-size:10.5px}}
+.hm-crest img{transform:translateX(calc(-50% + (var(--k) - 2) * 16px)) rotate(var(--r))}
+@keyframes crestIn{from{transform:translateX(-50%) rotate(0deg) scale(.6);opacity:0}}

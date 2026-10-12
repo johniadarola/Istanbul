@@ -1528,7 +1528,7 @@ function rid(n){const a='abcdefghijkmnpqrstuvwxyz23456789';let s='';for(let i=0;
 function rcode(){const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<5;i++)s+=a[Math.floor(Math.random()*a.length)];return s;}
 const shareLink=code=>location.origin+location.pathname+'?game='+code;
 async function copyText(t){try{await navigator.clipboard.writeText(t);toast('Link copied');}catch(e){toast(t);}}
-function showScreen(name){['home','lobby','table'].forEach(n=>$('#'+n).hidden=n!==name);if(name!=='table'){$('#myStrip').hidden=true;$('#moveBar').hidden=true;fitDock();}if(name!=='table'){$('#roundInfo').textContent='';document.title=T.name;}$('#codeChip').hidden=!ON.code;if(ON.code)$('#codeChip').textContent='Game '+ON.code;}
+function showScreen(name){['home','lobby','table'].forEach(n=>$('#'+n).hidden=n!==name);document.body.classList.toggle('on-home',name==='home');if(name!=='table'){$('#myStrip').hidden=true;$('#moveBar').hidden=true;fitDock();}if(name!=='table'){$('#roundInfo').textContent='';document.title=T.name;}$('#codeChip').hidden=!ON.code;if(ON.code)$('#codeChip').textContent='Game '+ON.code;}
 
 /* ---------- online play (Firebase Realtime Database) ---------- */
 const FIREBASE_CONFIG={
@@ -1702,48 +1702,68 @@ const HOME={n:2,seats:['friend','friend','ai','ai','ai'],layout:'short',exp:fals
 function goHome(){leaveOnline();GEN++;pendingMove=pendingEnd=null;$('#sheetWrap').hidden=true;showScreen('home');renderHome();}
 function renderHome(){
   let saved=null;try{saved=JSON.parse(lsGet(STORE)||'null');}catch(e){}
-  const name=$('#homeName')?$('#homeName').value:(lsGet('riverfair-name')||'');
+  if(saved&&saved.over)saved=null;
+  const fe=ICON('feather');
   $('#home').innerHTML=`
-  <div class="hero"><p class="eyebrow">${T.eyebrow}</p>
-    <h2 class="display">${T.headline}</h2>
-    <p class="lede">${T.lede}</p></div>
-  <div class="modes">
-    <div class="card panel">
-      <h3>Play online</h3>
-      <p class="muted">Create a game and send the link. Friends join in their browser with no account.</p>
-      <label class="fld" for="homeName">Your name<input id="homeName" maxlength="16" value="${esc(name)}" placeholder="Your name"></label>
-      <div class="fld">Players<div class="seg" id="hn">${[2,3,4,5].map(n=>`<button data-n="${n}" class="${HOME.n===n?'on':''}">${n}</button>`).join('')}</div></div>
-      <div class="seatcfg">${[...Array(HOME.n-1)].map((_,k)=>`<div class="prow"><i class="mer c-${COLORS[k+1]}"></i><span>Seat ${k+2}</span><div class="seg">${['friend','ai'].map(v=>`<button data-s="${k+1}" data-v="${v}" class="${HOME.seats[k+1]===v?'on':''}">${v==='ai'?'AI':'Friend'}</button>`).join('')}</div></div>`).join('')}</div>
-      <label class="fld" for="homeLayout">Board layout<select id="homeLayout"><option value="short" ${HOME.layout==='short'?'selected':''}>Short paths (learning)</option><option value="order" ${HOME.layout==='order'?'selected':''}>In order</option><option value="random" ${HOME.layout==='random'?'selected':''}>Random</option></select></label>
-      ${expToggle(HOME.exp)}
-      <button class="btn primary big" id="createBtn">Create game</button>
-      <div class="join"><label class="fld" for="joinCode">Have a code?<input id="joinCode" maxlength="8" placeholder="e.g. K7X2P" autocapitalize="characters"></label><button class="btn" id="joinBtn">Join</button></div>
+  <div class="hm-bg" role="img" aria-label="A busy ${T.name} market street"></div>
+  <div class="hm-col">
+    <div class="hm-brand">
+      ${fe?`<div class="hm-crest" aria-hidden="true">${[-30,-15,0,15,30].map((r,k)=>`<img src="art/home/feather-up.webp" alt="" style="--r:${r}deg;--k:${k}">`).join('')}</div>`:''}
+      <h2 class="hm-title">${T.name}</h2>
+      <p class="hm-tag">${T.eyebrow}</p>
     </div>
-    <div class="card panel">
-      <h3>Play on this device</h3>
-      <p class="muted">Pass-and-play with friends at the table, or practise against AI ${W.merchants}.</p>
-      <button class="btn primary big" id="localBtn">Set up a game</button>
-      ${saved&&!saved.over&&saved.players?`<button class="btn big" id="resumeBtn">Continue saved game <small>· round ${saved.round}, ${saved.players.length} players</small></button>`:''}
-      <button class="btn big" id="rulesBtn2">How to play</button>
-      ${IS_APP?'':`<button class="btn big install" id="installBtn"><img src="art/app/icon-192.png" alt="" width="22" height="22"> Install ${T.name} on this device</button>`}
+    <p class="hm-head">${esc(T.headline).replace(/\. /,'.<br>')}</p>
+    <p class="hm-lede">${T.lede2||T.lede}</p>
+    <div class="hm-card">
+      <h3>Your market awaits</h3>
+      ${saved&&saved.players?`<button class="btn primary big hm-go" id="resumeBtn">Continue your game<small>Round ${saved.round} · ${saved.players.length} players</small></button>`:''}
+      <button class="btn ${saved?'':'primary'} big hm-go" id="onlineBtn">Play online<small>Invite friends. No account needed.</small></button>
+      <button class="btn big hm-go" id="localBtn">Play on this device<small>Pass-and-play or practise against AI.</small></button>
+      <div class="hm-or"><span>◆</span></div>
+      <label class="hm-lbl" for="joinCode">Have a game code?</label>
+      <div class="hm-join"><input id="joinCode" maxlength="8" placeholder="Enter code" autocapitalize="characters" autocomplete="off"><button class="btn primary" id="joinBtn">Join</button></div>
     </div>
+    <div class="hm-links">
+      <button class="hm-link" id="rulesBtn2">New to ${T.name}? How to play <span aria-hidden="true">→</span></button>
+      ${IS_APP?'':`<button class="hm-link" id="installBtn"><img src="art/app/icon-192.png" alt="" width="18" height="18"> Install the app</button>`}
+    </div>
+    <p class="hm-foot">2–5 players · Online or around one table</p>
   </div>`;
-  document.querySelectorAll('#hn [data-n]').forEach(b=>b.onclick=()=>{HOME.n=+b.dataset.n;renderHome();});
-  document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{HOME.seats[+b.dataset.s]=b.dataset.v;renderHome();});
-  $('#homeLayout').onchange=e=>HOME.layout=e.target.value;
-  document.querySelectorAll('#home [data-exp]').forEach(b=>b.onclick=()=>{HOME.exp=b.dataset.exp==='1';renderHome();});
-  $('#createBtn').onclick=()=>{
-    const nm=cleanName($('#homeName').value);if(!nm){toast('Type your name first.');$('#homeName').focus();return;}
-    lsSet('riverfair-name',nm);
-    const seats=[...Array(HOME.n)].map((_,i)=>i===0?{name:nm,ai:false,owner:ME}:HOME.seats[i]==='ai'?{name:AI_NAMES[i],ai:true,owner:'ai'}:{name:'Friend',ai:false,owner:'-'});
-    createOnline({seats,layout:HOME.layout,exp:HOME.exp});
-  };
-  const jc=()=>{const c=$('#joinCode').value.trim();if(c)enterOnline(c);else toast('Type the game code first.');};
+  const jc=()=>{const c=$('#joinCode').value.trim();if(c)enterOnline(c);else{toast('Type the game code first.');$('#joinCode').focus();}};
   $('#joinBtn').onclick=jc;$('#joinCode').onkeydown=e=>{if(e.key==='Enter')jc();};
+  $('#onlineBtn').onclick=onlineSheet;
   $('#localBtn').onclick=setupSheet;
   $('#rulesBtn2').onclick=rulesSheet;
   const ib=$('#installBtn');if(ib)ib.onclick=installApp;
   const rb=$('#resumeBtn');if(rb)rb.onclick=()=>resumeGame(saved);
+}
+/* online game setup, in a window over the home screen */
+function onlineSheet(){
+  const w=$('#sheetWrap'),s=$('#sheet');s.className='';
+  let name=lsGet('riverfair-name')||'';
+  const draw=()=>{
+    s.innerHTML=`<h2>Play online</h2><div class="form">
+      <p class="muted">Create a game and send the link. Friends join in their browser with no account.</p>
+      <label class="fld" for="homeName">Your name<input id="homeName" maxlength="16" value="${esc(name)}" placeholder="Your name"></label>
+      <div><h4>Players</h4><div class="seg" id="hn">${[2,3,4,5].map(n=>`<button data-n="${n}" class="${HOME.n===n?'on':''}">${n}</button>`).join('')}</div></div>
+      ${[...Array(HOME.n-1)].map((_,k)=>`<div class="prow"><i class="mer c-${COLORS[k+1]}"></i><span>Seat ${k+2}</span><div class="seg">${['friend','ai'].map(v=>`<button data-s="${k+1}" data-v="${v}" class="${HOME.seats[k+1]===v?'on':''}">${v==='ai'?'AI':'Friend'}</button>`).join('')}</div></div>`).join('')}
+      <div><h4>Board layout</h4><select id="homeLayout"><option value="short" ${HOME.layout==='short'?'selected':''}>Short paths (learning)</option><option value="order" ${HOME.layout==='order'?'selected':''}>In order</option><option value="random" ${HOME.layout==='random'?'selected':''}>Random</option></select></div>
+      ${expToggle(HOME.exp)}
+      <div class="sbtns"><button class="btn primary big" id="createBtn">Create game</button><button class="btn" id="cancelBtn">Cancel</button></div></div>`;
+    const keep=()=>{name=$('#homeName').value;};
+    s.querySelectorAll('#hn [data-n]').forEach(b=>b.onclick=()=>{keep();HOME.n=+b.dataset.n;draw();});
+    s.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{keep();HOME.seats[+b.dataset.s]=b.dataset.v;draw();});
+    s.querySelectorAll('[data-exp]').forEach(b=>b.onclick=()=>{keep();HOME.exp=b.dataset.exp==='1';draw();});
+    $('#homeLayout').onchange=e=>HOME.layout=e.target.value;
+    $('#cancelBtn').onclick=()=>{w.hidden=true;};
+    $('#createBtn').onclick=()=>{
+      const nm=cleanName($('#homeName').value);if(!nm){toast('Type your name first.');$('#homeName').focus();return;}
+      lsSet('riverfair-name',nm);w.hidden=true;
+      const seats=[...Array(HOME.n)].map((_,i)=>i===0?{name:nm,ai:false,owner:ME}:HOME.seats[i]==='ai'?{name:AI_NAMES[i],ai:true,owner:'ai'}:{name:'Friend',ai:false,owner:'-'});
+      createOnline({seats,layout:HOME.layout,exp:HOME.exp});
+    };
+  };
+  draw();w.hidden=false;const f=$('#homeName');if(f&&!f.value)f.focus();
 }
 
 /* ---------- boot ---------- */
