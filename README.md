@@ -28,3 +28,6 @@ Images live in `art/` and are listed in the `art` block of `themes/riverfair.js`
 ## Installing as an app
 On Android (Chrome), open the site and tap **Install Riverfair on this device** on the home screen (or ⋮ → Install app). On iPhone, Safari → Share → Add to Home Screen. Local games work offline.
 After adding new art, run `python3 tools-precache.py <version>` so the offline copy includes it.
+
+## For future work
+See `CLAUDE.md` for the full handoff: code layout, decisions, testing and open items.
