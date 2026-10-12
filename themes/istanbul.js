@@ -6,7 +6,7 @@ window.THEME = {
   eyebrow: "Rüdiger Dorn's race through the bazaar",
   headline: 'Five Rubies, one bazaar',
   lede: "Lead your merchant and four assistants through sixteen bazaar locations. Load your wheelbarrow, trade at the markets and win the Sultan's favour. The first merchant to hold five Rubies (six with two players) ends the game.",
-  foot: "Unofficial fan implementation of Rüdiger Dorn's Istanbul (Pegasus Spiele) for personal play. Demand tiles, the Sultan's goods track and ruby counts are approximations of the printed components.",
+  foot: "Unofficial fan implementation of Rüdiger Dorn's Istanbul (Pegasus Spiele) for personal play.",
 
   words: {
     cur: 'Lira', curShort: 'L',

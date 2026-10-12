@@ -12,15 +12,16 @@ const LAYOUTS={short:[15,5,2,14,4,12,7,3,8,6,11,9,13,10,1,16],order:[1,2,3,4,5,6
 const LAYOUTS20={short:[16,15,18,3,10,8,1,7,17,4,2,19,6,12,9,20,11,5,14,13],order:[...Array(20)].map((_,i)=>i+1)};
 const DICE_GIFT={1:'lira',2:'y',3:'g',4:'r',5:'b',6:'coffee'};
 const POST_TOP=[{g:'r'},{l:2},{g:'b'},{l:2}], POST_BOT=[{g:'g'},{l:1},{g:'y'},{l:1}];
-const SMALL_TILES=[['r','g','y','y','b'],['r','r','g','y','b'],['g','g','r','y','b'],['y','y','r','g','g'],['r','g','g','y','b']];
-const LARGE_TILES=[['b','b','r','g','y'],['b','r','r','g','y'],['b','b','g','g','y'],['b','b','y','y','r'],['b','r','g','y','y']];
+/* demand tiles as printed (read from the components) */
+const SMALL_TILES=[['g','r','g','y','b'],['r','g','y','g','g'],['g','y','g','y','r'],['y','r','y','g','b'],['g','y','g','y','b']];
+const LARGE_TILES=[['r','b','r','b','g'],['g','b','y','b','r'],['r','b','g','b','b'],['r','b','r','b','y'],['r','b','y','b','b']];
 const REV={10:[0,3,7,12,18,25],11:[0,2,5,9,14,20]};
 const SULTAN_SEQ=['b','r','g','y','*','b','r','g','y','*'];
 const MOSQUE={14:['r','g'],15:['y','b']};
 const TILE_ABIL=T.tileAbil;
 const CARD_COUNTS={good:4,lira5:4,dSultan:2,dPost:2,dGem:2,family:2,stay:2,move34:4,recall:2,smAny:2};
 const EXP_CARDS={tea2:2,gcard:2,tea8:2,diceGift:2,swap3:2,six:2,corner:2,dWain:2,dCH:2};
-const TT_COST=[1,2,3,4];               // Tavern tiles: cost of each tile in a pile, top first
+const TT_COST=[1,2,3,4];               // Tavern tiles: cost of each tile in a pile, top first (as printed)
 const BAK_SIDES=[['y','y','y'],['r','b','g']]; // goods asked by the two sides of the Baksheesh tile
 Object.assign(CARD_COUNTS,EXP_CARDS);
 const CARD_DEFS={};for(const k in CARD_COUNTS)if(T.cards[k])CARD_DEFS[k]={n:CARD_COUNTS[k],...T.cards[k]};
@@ -47,8 +48,10 @@ const winTarget=g=>g.x?6:(g.players.length===2?6:5);
 const COLS=g=>g.cols||4;
 function rc(g,pl){const C=COLS(g);const i=g.layout.indexOf(pl);return[Math.floor(i/C),i%C];}
 function dist(g,a,b){const[x1,y1]=rc(g,a),[x2,y2]=rc(g,b);return Math.abs(x1-x2)+Math.abs(y1-y2);}
-const sultanReq=g=>SULTAN_SEQ.slice(0,4+g.sultanTaken);
-const gemPrice=g=>12+g.gemTaken;
+/* Sultan's track: blue, red, green, yellow, any, blue, red, green, yellow, any. 4–5 players start with 4 goods uncovered, 2–3 with 5 */
+const sultanReq=g=>SULTAN_SEQ.slice(0,(g.sultanStart||4)+g.sultanTaken);
+/* Gemstone Dealer's track runs 12–23: 4–5 players start at 12, 3 players at 14, 2 players at 15 */
+const gemPrice=g=>(g.gemStart||12)+g.gemTaken;
 const hasCard=(p,t)=>p.cards.includes(t);
 const cardOK=(ctx,p,t)=>!ctx.noCards&&hasCard(p,t); // place cards can't be used during a guild card's action
 function drawGuild(g){RNG_N++;if(!g.guildDeck.length)g.guildDeck=shuffle(g.guildDiscard.splice(0));return g.guildDeck.pop()||null;}
@@ -137,7 +140,7 @@ function newGame(cfg){
     small:shuffle(SMALL_TILES.map(t=>t.slice())),large:shuffle(LARGE_TILES.map(t=>t.slice())),
     mosque:{r:reqs.slice(),g:reqs.slice(),y:reqs.slice(),b:reqs.slice()},
     mosqueRubies:{14:n===5?4:n,15:n===5?4:n},wainRubies:n,
-    sultanTaken:0,sultanRubies:n+2,gemTaken:0,gemRubies:n+2,
+    sultanTaken:0,sultanStart:n<=3?5:4,sultanRubies:n<=3?6:7,gemTaken:0,gemStart:n===2?15:n===3?14:12,gemRubies:n===2?9:n===3?10:12,
     current:start,start,round:1,endTriggered:false,over:false,result:null,log:[],lastRoll:null,layoutName:cfg.layout,cfg};
   g.log.unshift({t:`${players[start].name} starts. First to ${winTarget(g)} ${W.rubies} ends the game.`,c:players[start].color});
   return g;
