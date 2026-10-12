@@ -920,8 +920,8 @@ function walkToken(board,el,pts,walking){
   const k=el.dataset.k;
   const r=el.getBoundingClientRect();
   const clone=el.cloneNode(true);clone.removeAttribute('data-k');clone.classList.add('walker');
-  Object.assign(clone.style,{position:'absolute',left:'0',top:'0',margin:'0',width:r.width+'px',height:r.height+'px',zIndex:50,pointerEvents:'none',visibility:'visible'});
-  board.appendChild(clone);
+  Object.assign(clone.style,{position:'absolute',left:'0',top:'0',margin:'0',width:r.width+'px',height:r.height+'px',zIndex:50,pointerEvents:'none',visibility:'visible',transform:`translate(${pts[0].x}px,${pts[0].y}px)`});
+  clone.dataset.walk=k;board.appendChild(clone);
   el.style.visibility='hidden';WALK[k]=clone;
   const segs=pts.length-1;
   const dur=walking?STEP_MS*segs+80:Math.min(900,420+Math.hypot(pts[0].x-pts.at(-1).x,pts[0].y-pts.at(-1).y)*0.6);
@@ -932,9 +932,15 @@ function walkToken(board,el,pts,walking){
   const fin=()=>{clone.remove();if(WALK[k]===clone)delete WALK[k];const cur=board.querySelector(`[data-k="${k}"]`);if(cur)cur.style.visibility='';};
   clone.animate(frames,{duration:dur,fill:'forwards'}).onfinish=fin;
   if(clone.classList.contains('standee')){
-    const dx=pts.at(-1).x-pts[0].x;if(Math.abs(dx)>4){FACE[k]=dx>0;clone.classList.toggle('flip',FACE[k]);}
-    // turn to face each leg of the walk
-    if(walking)for(let i=1;i<pts.length;i++){const ddx=pts[i].x-pts[i-1].x;if(Math.abs(ddx)>4)setTimeout(()=>clone.classList.toggle('flip',ddx>0),(i-1)*STEP_MS);}
+    // the art faces right: mirror the figure on every leftward leg, and remember the last way it faced
+    // a leg only turns the figure when it is mostly sideways
+    const legs=pts.slice(1).map((pt,i)=>{const dx=pt.x-pts[i].x,dy=pt.y-pts[i].y;return Math.abs(dx)>4&&Math.abs(dx)>Math.abs(dy)?dx:0;});
+    const lastH=legs.filter(d=>d).pop();
+    const first=walking?legs.find(d=>d):lastH;
+    clone.classList.toggle('flip',first!==undefined?first<0:!!FACE[k]);
+    const legMs=dur/Math.max(1,segs);
+    if(walking)legs.forEach((d,i)=>{if(i&&d)setTimeout(()=>clone.classList.toggle('flip',d<0),i*legMs);});
+    if(lastH!==undefined)FACE[k]=lastH<0;
     const img=clone.querySelector('img');
     if(img)img.animate([{rotate:'0deg',translate:'0 0'},{rotate:'-7deg',translate:'0 -4px'},{rotate:'0deg',translate:'0 0'},{rotate:'7deg',translate:'0 -4px'},{rotate:'0deg',translate:'0 0'}],{duration:STEP_MS,iterations:Math.max(1,Math.round(dur/STEP_MS)),easing:'linear'});
   }
@@ -1142,9 +1148,11 @@ function render(){
   const moving=UI.phase==='move'&&mineNow;
   const reach=new Set(moving?reachable(G,p,UI.mode):[]);
   const bd=$('#board');bd.classList.toggle('x5',COLS(G)===5);
-  $('#board').innerHTML=G.layout.map((pl,ix)=>{const C=COLS(G),gr=Math.floor(ix/C)+1,gc=ix%C+1;
+  /* rebuild only the tiles: walking figures and the barrier live on the board too and must survive redraws */
+  bd.querySelectorAll(':scope > .tile').forEach(t=>t.remove());
+  bd.insertAdjacentHTML('afterbegin',G.layout.map((pl,ix)=>{const C=COLS(G),gr=Math.floor(ix/C)+1,gc=ix%C+1;
     const art=T.art.tiles&&T.art.tiles[pl];const h=reach.has(pl)?hintFor(p,pl,UI.mode):null;
-    return `<button class="tile k-${KIND[pl]} ${art?'art':''} ${reach.has(pl)?'reach':''} ${moving&&!reach.has(pl)?'dim':''} ${UI.sel===pl?'sel':''} ${UI.sugg===pl?'sugg':''}" data-pl="${pl}" aria-label="${PNAME[pl]}${h?': '+h.t.replace(/<[^>]+>/g,''):''}" style="--r:${gr};--c:${gc};${art?`--art:url('${art}')`:''}"><span class="plate"><span class="pn">${pl}</span><span class="nm">${SHORT[pl]}</span><span class="st">${tileStatus(pl)}</span></span>${h&&h.t?`<span class="hint h-${h.k||'plain'}">${h.t}</span>`:''}${UI.sel===pl&&reach.has(pl)?`<span class="again">Tap again to ${UI.mode==='stay'?'stay':'move'}</span>`:''}<span class="tok n${Math.min(5,G.players.filter(q=>q.pos===pl&&T.art.merchants&&T.art.merchants[q.color]).length+(T.art.neutral?G.neutrals.filter(x=>x.pos===pl).length:0)+(T.art.gov&&G.gov===pl?1:0)+(T.art.smug&&G.smug===pl?1:0)+(T.art.trader&&G.x&&G.trader===pl?1:0))}">${tokens(pl)}</span></button>`;}).join('');
+    return `<button class="tile k-${KIND[pl]} ${art?'art':''} ${reach.has(pl)?'reach':''} ${moving&&!reach.has(pl)?'dim':''} ${UI.sel===pl?'sel':''} ${UI.sugg===pl?'sugg':''}" data-pl="${pl}" aria-label="${PNAME[pl]}${h?': '+h.t.replace(/<[^>]+>/g,''):''}" style="--r:${gr};--c:${gc};${art?`--art:url('${art}')`:''}"><span class="plate"><span class="pn">${pl}</span><span class="nm">${SHORT[pl]}</span><span class="st">${tileStatus(pl)}</span></span>${h&&h.t?`<span class="hint h-${h.k||'plain'}">${h.t}</span>`:''}${UI.sel===pl&&reach.has(pl)?`<span class="again">Tap again to ${UI.mode==='stay'?'stay':'move'}</span>`:''}<span class="tok n${Math.min(5,G.players.filter(q=>q.pos===pl&&T.art.merchants&&T.art.merchants[q.color]).length+(T.art.neutral?G.neutrals.filter(x=>x.pos===pl).length:0)+(T.art.gov&&G.gov===pl?1:0)+(T.art.smug&&G.smug===pl?1:0)+(T.art.trader&&G.x&&G.trader===pl?1:0))}">${tokens(pl)}</span></button>`;}).join(''));
   drawBarrier();
   document.querySelectorAll('.tile').forEach(t=>t.onclick=()=>{const v=+t.dataset.pl;
     if(moving&&reach.has(v)&&UI.sel===v&&pendingMove){commitMove(v);return;}
