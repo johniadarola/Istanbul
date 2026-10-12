@@ -515,3 +515,57 @@ body.t-riverfair{--g-b:#b9c6e3}
 .barrier.has-ic{opacity:.85;background:var(--pc,#fff);box-shadow:0 0 0 1px rgba(0,0,0,.3)}
 .barrier-ic{position:absolute;z-index:41;width:40px;height:40px;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5))}
 @media (max-width:600px){.barrier-ic{width:30px;height:30px;margin:5px}}
+
+/* ---------- physical cards in hand ---------- */
+.hand{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:flex-end}
+.pcard{--fr:#5b3a8c;--fr2:#8a63c2;--pa:#f6efe0;position:relative;width:84px;height:118px;padding:4px 4px 5px;border:0;border-radius:8px;cursor:pointer;font:inherit;color:#2d1d0e;
+  background:linear-gradient(160deg,var(--fr2),var(--fr));box-shadow:0 2px 0 rgba(0,0,0,.25),0 3px 8px rgba(40,20,5,.3);display:flex;flex-direction:column;gap:3px;text-align:center;
+  transition:transform .15s ease,box-shadow .15s ease}
+.pcard:hover{transform:translateY(-5px) rotate(-1deg);box-shadow:0 2px 0 rgba(0,0,0,.25),0 10px 16px rgba(40,20,5,.35)}
+.pcard:focus-visible{outline:3px solid var(--turq);outline-offset:2px}
+.pcard.gld{--fr:#5a3416;--fr2:#9a6a33}
+.pcard .pt{background:#fbf3df;border-radius:5px 5px 2px 2px;font-family:var(--f-tile,var(--f-display));font-weight:800;font-size:10.5px;line-height:1.1;padding:3px 3px 2px;min-height:26px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px rgba(201,162,74,.8)}
+.pcard .pa{flex:1;background:radial-gradient(circle at 50% 40%,#fffaf0,#ead9b6);border-radius:3px;display:flex;align-items:center;justify-content:center;gap:2px;flex-wrap:wrap;padding:2px;box-shadow:inset 0 0 0 1px rgba(201,162,74,.8);min-height:0;overflow:hidden}
+.pcard .px{background:#fbf3df;border-radius:2px 2px 5px 5px;font-size:7.5px;line-height:1.15;padding:2px 3px;color:#4a3420;height:27px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(201,162,74,.8)}
+.pcard .ci{width:18px;height:18px;object-fit:contain}
+.pcard .ci.big{width:30px;height:30px}
+.pcard .cn{font-family:var(--f-display);font-weight:800;font-size:15px;color:#5a2d0c;line-height:1}
+.pcard .cn.sm{font-size:11px}
+.pcard .arr{font-size:12px;font-weight:800;color:#7a5a3a}
+.pcard .glyph{font-size:22px;line-height:1;color:#5a3a1a}
+.pcard .glyph.corner{font-size:18px;letter-spacing:-2px}
+.pcard .cpl{width:30px;height:30px;border-radius:6px;background:#c9a26a center/cover;position:relative;box-shadow:0 0 0 1.5px #fbf3df,0 1px 3px rgba(0,0,0,.4)}
+.pcard .cpl b{position:absolute;left:-4px;top:-4px;font-size:8px;background:#d8b25a;color:#3a2410;border-radius:999px;min-width:13px;height:13px;line-height:13px;box-shadow:0 0 0 1px #fbf3df}
+.pcard .cdie .die{width:22px;height:22px;padding:3px;border-radius:5px;border-width:1.5px}
+.pcard .gno{position:absolute;right:5px;bottom:4px;font-style:normal;font-size:7px;font-weight:800;color:#c9a26a;opacity:.0}
+.pcard.armed{transform:translateY(-8px);box-shadow:0 0 0 3px var(--bole),0 10px 16px rgba(40,20,5,.35)}
+.pcard.armed::after{content:"In use";position:absolute;left:50%;top:-10px;transform:translateX(-50%);font-size:9px;font-weight:800;background:var(--bole);color:#fff;padding:1px 6px;border-radius:999px}
+@media (max-width:600px){.pcard{width:74px;height:106px}.pcard .px{font-size:7px;height:25px}.pcard .pt{font-size:9.5px;min-height:24px}}
+/* the big card in a card's window */
+.bigcard{display:flex;justify-content:center;margin:2px 0 10px}
+.bigcard .pcard{transform:scale(1.9);transform-origin:top center;margin-bottom:108px;pointer-events:none}
+@media (max-width:600px){.bigcard .pcard{transform:scale(1.6);margin-bottom:66px}}
+/* other players: fanned card backs */
+.hidhand{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.backs{display:inline-flex;align-items:center;position:relative;padding-right:4px}
+.cback{width:22px;height:31px;margin-left:-12px;border-radius:3px;transform:rotate(calc((var(--i) - 1) * 6deg));display:inline-flex}
+.cback:first-child{margin-left:0}
+.cback img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.4))}
+.cback:not(:has(img)){background:linear-gradient(160deg,#8a63c2,#5b3a8c);box-shadow:0 0 0 1px #fbf3df}
+.cback.g:not(:has(img)){background:linear-gradient(160deg,#9a6a33,#5a3416)}
+.backs b{margin-left:6px;font-size:13px;color:var(--ink)}
+.pcard .cdie .die{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:1px;padding:3px;background:#fffdf7}
+.pcard .cdie .die i{margin:0;width:100%;height:100%}
+.pcard .cdie .die i.on{background:#14203b}
+.pcard .px{height:auto;max-height:28px}
+.pcard .px{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;max-height:none}
+.pcard .pa{flex-wrap:nowrap}
+@media (max-width:600px){.pcard .cpl{width:26px;height:26px}.pcard .ci.big{width:26px;height:26px}.pcard .px{-webkit-line-clamp:3}}
+.pcard .px{height:calc(3.45em + 4px);padding:2px 3px;box-sizing:border-box;overflow:hidden}
+.pcard .px{line-height:1.15}
+.pcard .px{padding:2px 3px 0;height:calc(3.45em + 2px)}
+@media (max-width:600px){.pcard{height:112px}.pcard .px{height:calc(3.5em + 3px)}}
+.pcard .px{height:calc(3.5em + 3px)}
+/* text box: exactly as tall as its (at most three) lines; the art panel takes the rest */
+.pcard .px{height:auto!important;max-height:none!important;flex:none;padding:2px 3px}
+.pcard .px{padding:2px 3px 0!important;border-bottom:2px solid #fbf3df;overflow:hidden}

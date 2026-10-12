@@ -758,7 +758,7 @@ async function cardTap(pi,i){
   if(t==='corner'){playable=moving;label=UI.mode===t?'Cancel':'Use for this move';if(!moving)hint='Only before you move.';}
   UI.busy=true;
   try{
-    const ok=await sheet(def.name,`<p>${def.text}</p>${hint?`<p class="muted">${hint}</p>`:''}`,playable?[{label,value:true,primary:true},{label:'Close',value:false}]:[{label:'Close',value:false}]);
+    const ok=await sheet(def.name,`<div class="bigcard">${cardHTML(t,'tabindex="-1"')}</div><p>${def.text}</p>${hint?`<p class="muted">${hint}</p>`:''}`,playable?[{label,value:true,primary:true},{label:'Close',value:false}]:[{label:'Close',value:false}]);
     if(!ok)return;
     const ctx=liveCtx();
     if(t==='lira5'){useCard(G,p,t);p.lira+=5;log(ctx,`${p.name} plays “${def.name}”.`,p);}
@@ -778,7 +778,7 @@ async function guildTap(pi,i){
   const hint=!myTurn?'You can play this on your turn.':!moving?'Play it before you move: it replaces your whole turn.':!ok?"You can't carry it out right now.":'Playing it replaces your whole turn: no move and no encounters.';
   UI.busy=true;
   let go=false;
-  try{go=await sheet(guildName(n),`<p>${guildText(n)}</p><p class="muted">${hint}</p>`,moving&&ok?[{label:'Play instead of moving',value:true,primary:true},{label:'Close',value:false}]:[{label:'Close',value:false}]);}
+  try{go=await sheet(guildName(n),`<div class="bigcard">${guildCardHTML(n,'tabindex="-1"')}</div><p>${guildText(n)}</p><p class="muted">${hint}</p>`,moving&&ok?[{label:'Play instead of moving',value:true,primary:true},{label:'Close',value:false}]:[{label:'Close',value:false}]);}
   finally{UI.busy=false;render();}
   if(go&&pendingMove){$('#moveBar').hidden=true;document.body.classList.remove('has-movebar');pendingMove({guild:n});}
 }
@@ -1204,7 +1204,7 @@ function render(){
       <div class="stats"><span data-stat="lira"><b>${q.lira}</b> ${W.cur}</span>${G.x?`<span data-stat="coffee">${teaIc()} <b>${q.coffee}</b> ${W.coffee}</span>`:''}<span data-stat="ap"><b>${q.stack}</b> ${plural(q.stack,W.assistant,W.assistants)} along${out?` <span class="muted">· out: ${out}</span>`:''}</span><span class="muted">${W.family[0].toUpperCase()+W.family.slice(1)}: ${SHORT[q.family]}</span>${q.tt&&q.tt.m?`<span class="tag tt" data-tt="m" title="${TT_TEXT('m')}">${ICON('gutter-map')?`<img class="gi" src="${ICON('gutter-map')}" alt="">`:''}${W.moveTile}</span>`:''}${q.tt&&q.tt.e?`<span class="tag tt" data-tt="e" title="${TT_TEXT('e')}">${ICON('friends')?`<img class="gi" src="${ICON('friends')}" alt="">`:''}${W.encTile}</span>`:''}${G.x&&G.barrierOwner===q.i?`<span class="tag tt">${ICON('barricade')?`<img class="gi" src="${ICON('barricade')}" alt="">`:''}Holds the ${W.barrier}</span>`:''}
       <span class="tiles4" title="${W.tiles}">${GOODS.map(c=>ICON('badge-'+c)?`<span class="badge ${q.tiles[c]?'on':''}" data-b="${c}" title="${GNAME[c]} ${W.tile}${q.tiles[c]?'':' (not earned)'}"><img class="gi" src="${ICON('badge-'+c)}" alt=""></span>`:`<span class="mt ${q.tiles[c]?'on g-'+c:''}" data-b="${c}" title="${GNAME[c]} tile"></span>`).join('')}</span></div>
       ${cartHTML(q)}
-      ${showHand?`<div class="hand">${q.cards.length?q.cards.map((c,i)=>`<button class="cardchip ${UI.mode===c?'armed':''}" data-card="${q.i}:${i}">${CARD_DEFS[c].name}</button>`).join(''):`<span class="muted">No ${W.cards}</span>`}${(q.guild||[]).map((c,i)=>`<button class="cardchip guild ${ICON('guild-card')?'ic':''}" data-guild="${q.i}:${i}" title="${W.guildCard}">${ICON('guild-card')?`<img class="gi" src="${ICON('guild-card')}" alt="">`:''}${guildName(c)}</button>`).join('')}</div>`:`<div class="stats muted">${q.cards.length} ${plural(q.cards.length,W.card,W.cards)}${G.x?` · <span data-stat="guild">${ICON('guild-card')?`<img class="gi" src="${ICON('guild-card')}" alt="">`:''}${(q.guild||[]).length} ${plural((q.guild||[]).length,W.guildCard,W.guildCards)}</span>`:''}</div>`}
+      ${showHand?`<div class="hand">${q.cards.map((c,i)=>cardHTML(c,`data-card="${q.i}:${i}"`,UI.mode===c?'armed':'')).join('')}${(q.guild||[]).map((c,i)=>guildCardHTML(c,`data-guild="${q.i}:${i}"`)).join('')}${!q.cards.length&&!(q.guild||[]).length?`<span class="muted">No ${W.cards}</span>`:''}</div>`:`<div class="stats muted hidhand">${backsHTML(q.cards.length,'f')}${G.x?`<span data-stat="guild">${backsHTML((q.guild||[]).length,'g')}</span>`:''}${!q.cards.length&&!(q.guild||[]).length?`No ${W.cards}`:''}</div>`}
       ${canRejoin?`<button class="btn" style="margin-top:8px" data-rejoin="${q.i}">This is me: play as ${esc(q.name)}</button>`:''}
     </div>`;}).join('');
   document.querySelectorAll('[data-card]').forEach(b=>b.onclick=()=>{const[a,c]=b.dataset.card.split(':');cardTap(+a,+c);});
@@ -1363,7 +1363,7 @@ function flyPath(sx,sy,ex,ey,n,html,delay,onLand){
 }
 /* badges, Snug favours and guild cards travel between their place on the board and the player's panel */
 function flyItems(i,was,now){
-  if(REDUCED||!G.x&&!ICON('badge-r'))return;
+  if(REDUCED)return;
   const card=document.querySelector(`.pl[data-pi="${i}"]`);if(!card)return;
   const tile=pl=>document.querySelector(`#board .tile[data-pl="${pl}"]`);
   const ctr=el=>{const r=el.getBoundingClientRect();return[r.left+r.width/2,r.top+r.height/2];};
@@ -1373,8 +1373,14 @@ function flyItems(i,was,now){
   let k=0;
   GOODS.forEach(c=>{if(now.badges&&was.badges&&now.badges[c]>was.badges[c]&&ICON('badge-'+c)){const to=card.querySelector(`[data-b="${c}"]`);go(tile(MOSQUE[14].includes(c)?14:15),to,'badge-'+c,40,150*k++);}});
   ['m','e'].forEach(t=>{if(now.tt&&(now.tt[t]||0)>(was.tt&&was.tt[t]||0)){const to=card.querySelector(`[data-tt="${t}"]`);go(tile(19),to,t==='m'?'gutter-map':'friends',40,150*k++);}});
+  if(ICON('card')&&now.cards!==was.cards){
+    const tok=document.querySelector(`#board [data-k="m${i}"]`)||tile(G.players[i].pos);
+    const hand=[...card.querySelectorAll('.pcard.fav')].pop()||card.querySelector('.backs.f')||card.querySelector('.hand,.hidhand');
+    const d=now.cards-was.cards;
+    for(let n=0;n<Math.min(Math.abs(d),3);n++){if(d>0)go(tok,hand,'card',36,150*k++);else go(hand||card,tok,'card',36,150*k++);}
+  }
   if(ICON('guild-card')&&now.guild!==was.guild){
-    const hand=card.querySelector('.cardchip.guild:last-of-type')||card.querySelector('[data-stat="guild"]');
+    const hand=[...card.querySelectorAll('.pcard.gld')].pop()||card.querySelector('.backs.g')||card.querySelector('[data-stat="guild"]')||card.querySelector('.hand,.hidhand');
     const d=now.guild-was.guild;
     for(let n=0;n<Math.min(Math.abs(d),3);n++){
       if(d>0)go(tile(18),hand,'guild-card',36,150*k++);
@@ -1397,6 +1403,53 @@ function flyOut(sx,sy,ex,ey,n,html,from){
       {duration:1100,delay:110*k,easing:'cubic-bezier(.45,0,.4,1)',fill:'backwards'}).onfinish=()=>el.remove();
   }
 }
+/* ---------- physical cards ---------- */
+const I=(k,cls='')=>ICON(k)?`<img class="ci ${cls}" src="${ICON(k)}" alt="">`:'';
+const PT=pl=>{const a=T.art.tiles&&T.art.tiles[pl];return `<span class="cpl" ${a?`style="background-image:url('${a}')"`:''}><b>${pl}</b></span>`;};
+const NUM=(t,cls='')=>`<span class="cn ${cls}">${t}</span>`;
+const goodI=c=>ICON(GICON[c])?I(GICON[c]):chip(c);
+const dieI=n=>`<span class="cdie">${dieFace(n)}</span>`;
+function cardArt(k){
+  switch(k){
+  case 'good':return `${I('any','big')}${NUM('+1')}`;
+  case 'lira5':return `${I('coin','big')}${NUM('+5')}`;
+  case 'dSultan':return `${PT(13)}${NUM('2×')}`;
+  case 'dPost':return `${PT(5)}${NUM('2×')}`;
+  case 'dGem':return `${PT(16)}${NUM('2×')}`;
+  case 'dWain':return `${PT(1)}${NUM('2×')}`;
+  case 'dCH':return `${PT(20)}${NUM('2×')}`;
+  case 'smAny':return `${PT(11)}${I('any')}`;
+  case 'family':return `${I('cousin')}<span class="arr">→</span>${PT(12)}`;
+  case 'stay':return `<span class="glyph">⟲</span>${NUM('0','sm')}`;
+  case 'move34':return `<span class="glyph">👣</span>${NUM('3–4','sm')}`;
+  case 'recall':return `${I('apprentice','big')}<span class="arr">↩</span>`;
+  case 'tea2':return `${I('coffee','big')}${NUM('+2')}`;
+  case 'gcard':return `${I('coffee')}${NUM('2','sm')}<span class="arr">→</span>${I('guild-card')}`;
+  case 'tea8':return `${I('coffee')}<span class="arr">→</span>${I('coin')}${NUM('8','sm')}`;
+  case 'diceGift':return `${dieI(3)}${dieI(5)}`;
+  case 'swap3':return `<span class="glyph">⇄</span>${NUM('×3','sm')}`;
+  case 'six':return `${dieI(6)}`;
+  case 'corner':return `<span class="glyph corner">⌜ ⌟</span>`;
+  }
+  return '';
+}
+function guildArt(n){
+  const fill=c=>`${goodI(c)}${NUM('max','sm')}${I('any')}`;
+  return {1:`${I('crate','big')}${NUM('+1')}`,2:fill('r'),3:fill('g'),4:fill('y'),5:`${I('coin')}${NUM('4','sm')}${I('any')}${NUM('×4','sm')}`,
+    6:`${I('card','big')}${NUM('+3')}`,7:`${PT(7)}${NUM('+1 turn','sm')}`,8:`${I('any')}${NUM('2','sm')}${dieI(4)}${I('pearls')}`,
+    9:`${PT(9)}${NUM('×2')}`,10:`${goodI('r')}${goodI('g')}${goodI('y')}<span class="arr">→</span>${NUM('15','sm')}`,11:`${goodI('b')}${goodI('r')}${goodI('g')}<span class="arr">→</span>${NUM('20','sm')}`,
+    12:`<span class="glyph">✳</span>${I('cousin')}`,13:`${I('any')}${NUM('×6','sm')}<span class="arr">→</span>${I('feather')}`,14:`${PT(14)}${I('badge-r')}${I('badge-g')}`,15:`${PT(15)}${I('badge-y')}${I('badge-b')}`,
+    16:`${I('coin')}${NUM('15','sm')}<span class="arr">→</span>${I('feather')}`,17:`${I('coffee','big')}${NUM('+5')}`,18:`${I('coffee')}${I('guild-card')}${NUM('×2','sm')}`,
+    19:`${PT(19)}${NUM('×2','sm')}`,20:`${PT(20)}${NUM('½','sm')}`}[n]||'';
+}
+const shortText=t=>t.length>54?t.slice(0,52).replace(/\s+\S*$/,'')+'…':t;
+function cardHTML(k,attrs='',extra=''){const d=CARD_DEFS[k];
+  return `<button class="pcard fav ${extra}" ${attrs} aria-label="${esc(d.name)}: ${esc(d.text)}"><span class="pt">${d.name}</span><span class="pa">${cardArt(k)}</span><span class="px">${shortText(d.text)}</span></button>`;}
+function guildCardHTML(n,attrs='',extra=''){
+  return `<button class="pcard gld ${extra}" ${attrs} aria-label="${esc(guildName(n))}: ${esc(guildText(n))}"><span class="pt">${guildName(n)}</span><span class="pa">${guildArt(n)}</span><span class="px">${shortText(guildText(n))}</span><i class="gno">${n}</i></button>`;}
+function backsHTML(n,kind){const ic=ICON(kind==='g'?'guild-card':'card');
+  return n?`<span class="backs ${kind}" title="${n} ${kind==='g'?plural(n,W.guildCard,W.guildCards):plural(n,W.card,W.cards)}">${[...Array(Math.min(n,6))].map((_,i)=>`<span class="cback ${kind}" style="--i:${i}">${ic?`<img src="${ic}" alt="">`:''}</span>`).join('')}<b>${n}</b></span>`:'';}
+
 /* ---------- my status strip (phones) ---------- */
 let LAST_HUMAN=null;
 function stripPlayer(){
