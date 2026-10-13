@@ -4,7 +4,7 @@ Read this first. It records what the game is, how the code is laid out, the deci
 
 ## What it is
 - **Riverfair** is a digital board game for 2–5 players, played online with friends (no account) or on one device against AI.
-- **Live:** https://johniadarola.github.io/Riverfair/ (GitHub Pages from this repo, branch `main`). It can be installed as an app from the title screen.
+- **Live:** https://mossforged.github.io/Riverfair/ (GitHub Pages from this repo, branch `main`). It can be installed as an app from the title screen.
 - **Origin:** it began as a faithful implementation of Rüdiger Dorn's *Istanbul* plus its first expansion (*Mocha & Baksheesh*). The owner later made it its own game and removed every Istanbul reference from what players see. Keep it that way: no Istanbul names in player-facing text. The rules are still Istanbul's, and the original rulebooks were the reference for every rule and component value.
 - **Setting:** the owner's animal-fantasy world (Eldrith). The species are Redwall-like, with nothing larger than a badger or fox. The Avian Ascendancy (herons, egrets, crows and their bird servants) is the meddling power above the townsfolk. Small mammals have single plain names. Greater avians have elevated, Latin- or elvish-sounding names.
 
